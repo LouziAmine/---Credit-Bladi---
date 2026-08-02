@@ -1,0 +1,16 @@
+package com.credit.bladi.model.enums;
+
+public enum AuditAction {
+    LOGIN,
+    LOGOUT,
+    REGISTER,
+    TOKEN_REFRESH,
+    TOKEN_REUSE_DETECTED,
+    SIMULATION,
+    SIMULATION_REJECTED,
+    USER_CREATE,
+    USER_ROLE_UPDATE,
+    BAM_PARAMETERS_UPDATE,
+    CREDIT_RATE_UPDATE,
+    MOURABAHA_PARAMETERS_UPDATE
+}

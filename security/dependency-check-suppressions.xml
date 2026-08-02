@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!-- Add <suppress> entries here only for reviewed false positives, with a <notes> explaining why. -->
+
+    <suppress>
+        <notes>
+            CVE-2022-31691 requires the DevTools remote debug endpoint to be exposed and
+            reachable without authentication. spring-boot-devtools is a dev-only/optional
+            dependency excluded from the repackaged production jar by Spring Boot's plugin,
+            so this endpoint never ships to prod. Reviewed 2026-07-08.
+        </notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.boot/spring\-boot\-devtools@.*$</packageUrl>
+        <cve>CVE-2022-31691</cve>
+    </suppress>
+</suppressions>

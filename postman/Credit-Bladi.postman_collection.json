@@ -1,0 +1,1817 @@
+{
+  "info": {
+    "_postman_id": "cb002-2026-credit-bladi",
+    "name": "Credit Bladi — Simulation Scenarios",
+    "description": "Moroccan Mortgage Credit Simulator — BAM Compliant\n\n**Folder convention (mirrors bff-customer-connector feature files):**\n- `resource` → nominal / happy-path requests\n- `resourceAccesses` → access restriction scenarios (401, 403)\n- `resourceErrors` → validation & business-rule errors (400, 404, 409, 422, 415)\n\n**Auth model:** login/register/refresh set two HttpOnly cookies (`cb_access_token`, `cb_refresh_token`) — the JWT is never returned in the response body. Postman's cookie jar auto-captures them, but since the collection needs to hold a CLIENT session and a MANAGER session at the same time, each login test script also copies the cookie value into a collection variable (`client_access_token` / `manager_access_token`); protected requests attach it manually via an explicit `Cookie` header.\n\n**Run with the `dev` Spring profile** (`security.cookie.secure=false`) when testing over plain `http://localhost:8080` — the `Secure` cookie attribute is otherwise set and browsers/clients depending on it may not persist the cookie over non-TLS.\n\n**Quick start:**\n1. `auth / 1. Register CLIENT` → 201\n2. `auth / 2. Login CLIENT` → cookies captured into `client_access_token` / `client_refresh_token`\n3. `auth / 3. Login MANAGER` → cookies captured into `manager_access_token` / `manager_refresh_token`\n4. All protected folders reference `{{manager_access_token}}` / `{{client_access_token}}` via an explicit `Cookie` header\n\nCSP codes: FONC | SALA | RETR | PROF | INDE — all five now have active seeded credit-rate rows.\nAmount: 70 000–30 000 000 MAD | Duration: 12–300 months (also bounded per-CSP by the credit-rate record) | Property value: 80 000–50 000 000 MAD | Monthly income: 1 000–5 000 000 MAD | Age: 18–74.\n\n**Rate limits** (per client IP, see `RateLimitFilter`): login/register 5 req/window, refresh 10, logout 10, simulation 20. This collection stays under those ceilings for a single top-to-bottom run; re-running it quickly (e.g. via Collection Runner) may need a short pause first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",                "value": "http://localhost:8080", "type": "string" },
+    { "key": "client_access_token",    "value": "", "type": "string", "description": "cb_access_token cookie value for the CLIENT session — saved automatically after Login CLIENT" },
+    { "key": "client_refresh_token",   "value": "", "type": "string", "description": "cb_refresh_token cookie value for the CLIENT session — saved automatically after Login CLIENT" },
+    { "key": "manager_access_token",   "value": "", "type": "string", "description": "cb_access_token cookie value for the MANAGER session — saved automatically after Login MANAGER" },
+    { "key": "manager_refresh_token",  "value": "", "type": "string", "description": "cb_refresh_token cookie value for the MANAGER session — saved automatically after Login MANAGER" },
+    { "key": "user_id",                "value": "", "type": "string", "description": "Set automatically from the Location header after 'Create CLIENT' in users/2" },
+    { "key": "admin_user_id",          "value": "", "type": "string", "description": "Set automatically from users/1 (GET list) by matching username=admin — used for the self-role-modification 403 test" },
+    { "key": "client_refresh_token_stale", "value": "", "type": "string", "description": "Snapshot of client_refresh_token taken right before it gets rotated by refresh — used to prove token-reuse detection" },
+    { "key": "credit_rate_id",         "value": "2", "type": "string", "description": "Seeded credit_rate id used for nominal PATCH examples (2 = SALA)" },
+    { "key": "bam_parameters_id",      "value": "1", "type": "string", "description": "Seeded bam_parameters id (single active row)" },
+    { "key": "mourabaha_parameters_id","value": "1", "type": "string", "description": "Seeded mourabaha_parameters id (single active row)" }
+  ],
+  "item": [
+
+    {
+      "name": "🔐 Auth — /api/v1/auth",
+      "description": "Authentication endpoints: register, login, refresh, logout, me. Login/register/refresh are public; /me requires a valid access-token cookie.",
+      "item": [
+
+        {
+          "name": "auth",
+          "description": "Nominal flows: register CLIENT, login CLIENT + MANAGER, me, refresh, logout both.",
+          "item": [
+
+            {
+              "name": "1. Register CLIENT → 201",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.demo1\",\n  \"password\": \"ClientDemoPass123\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Creates a CLIENT account (role omitted = CLIENT by default). Password must be 12-100 chars with at least one uppercase, one lowercase and one digit.\n\n**Expected:** `201 Created`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));"] } }]
+            },
+
+            {
+              "name": "2. Login CLIENT → 200  (cookies auto-saved)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.demo1\",\n  \"password\": \"ClientDemoPass123\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Sets `cb_access_token` (HttpOnly) and `cb_refresh_token` (HttpOnly) cookies. Response body is `{ username, role }` — no token in the body anymore."
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const res = pm.response.json();",
+                "pm.test('Role is CLIENT', () => pm.expect(res.role).to.eql('CLIENT'));",
+                "const access = pm.cookies.get('cb_access_token');",
+                "const refresh = pm.cookies.get('cb_refresh_token');",
+                "pm.test('Access cookie set', () => pm.expect(access).to.not.be.undefined);",
+                "if (access)  { pm.collectionVariables.set('client_access_token', access);  console.log('✅ client_access_token saved'); }",
+                "if (refresh) { pm.collectionVariables.set('client_refresh_token', refresh); console.log('✅ client_refresh_token saved'); }"
+              ] } }]
+            },
+
+            {
+              "name": "3. Login MANAGER → 200  (cookies auto-saved)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "MANAGER account inserted by Liquibase at startup (changeset `006-insert-default-manager`)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const res = pm.response.json();",
+                "pm.test('Role is MANAGER', () => pm.expect(res.role).to.eql('MANAGER'));",
+                "const access = pm.cookies.get('cb_access_token');",
+                "const refresh = pm.cookies.get('cb_refresh_token');",
+                "pm.test('Access cookie set', () => pm.expect(access).to.not.be.undefined);",
+                "if (access)  { pm.collectionVariables.set('manager_access_token', access);  console.log('✅ manager_access_token saved'); }",
+                "if (refresh) { pm.collectionVariables.set('manager_refresh_token', refresh); console.log('✅ manager_refresh_token saved'); }"
+              ] } }]
+            },
+
+            {
+              "name": "4. GET /me — CLIENT → 200",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] },
+                "description": "**Expected:** `200 OK` with `{ username: client.demo1, role: CLIENT }`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Role is CLIENT', () => pm.expect(pm.response.json().role).to.eql('CLIENT'));"
+              ] } }]
+            },
+
+            {
+              "name": "5. GET /me — MANAGER → 200",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] },
+                "description": "**Expected:** `200 OK` with `{ username: admin, role: MANAGER }`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('Role is MANAGER', () => pm.expect(pm.response.json().role).to.eql('MANAGER'));"
+              ] } }]
+            },
+
+            {
+              "name": "6. POST /refresh — CLIENT → 200  (rotates cookies)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "cb_refresh_token={{client_refresh_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] },
+                "description": "Issues a new access token and rotates the refresh token (old refresh token is revoked). The pre-rotation refresh token is snapshotted into `client_refresh_token_stale` for the reuse-detection test in authErrors.\n\n**Expected:** `200 OK`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const stale = pm.collectionVariables.get('client_refresh_token');",
+                "if (stale) { pm.collectionVariables.set('client_refresh_token_stale', stale); }",
+                "const access = pm.cookies.get('cb_access_token');",
+                "const refresh = pm.cookies.get('cb_refresh_token');",
+                "if (access)  { pm.collectionVariables.set('client_access_token', access); }",
+                "if (refresh) { pm.collectionVariables.set('client_refresh_token', refresh); console.log('✅ client tokens rotated'); }"
+              ] } }]
+            },
+
+            {
+              "name": "7. Logout CLIENT → 204  (tokens revoked)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}; cb_refresh_token={{client_refresh_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] },
+                "description": "Revokes the access token (blacklist) and the refresh token server-side. Intentionally `permitAll` so an already-expired access token doesn't block revocation.\n\n**Expected:** `204 No Content`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('204 - Logout successful', () => pm.response.to.have.status(204));"
+              ] } }]
+            },
+
+            {
+              "name": "8. Logout MANAGER → 204  (tokens revoked)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}; cb_refresh_token={{manager_refresh_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] },
+                "description": "**Expected:** `204 No Content`\n\nRun this LAST — every MANAGER-protected request later in the collection still needs `{{manager_access_token}}` to be valid."
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('204 - Logout MANAGER successful', () => pm.response.to.have.status(204));"
+              ] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "authErrors",
+          "description": "Auth error scenarios: invalid credentials, duplicate username, invalid register input, revoked/missing token.",
+          "item": [
+
+            {
+              "name": "1. Wrong password → 401",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.demo1\",\n  \"password\": \"WrongPassword123\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "**Expected:** `401 Unauthorized`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Invalid credentials', () => pm.response.to.have.status(401));"] } }]
+            },
+
+            {
+              "name": "2. Username already taken → 409",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.demo1\",\n  \"password\": \"ClientDemoPass123\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Register with an already existing username.\n\n**Expected:** `409 Conflict`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('409 - Username taken', () => pm.response.to.have.status(409));"] } }]
+            },
+
+            {
+              "name": "3. Register — blank username → 400",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"\",\n  \"password\": \"ClientDemoPass123\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Username blank — @NotBlank constraint.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 - Blank username', () => pm.response.to.have.status(400));"] } }]
+            },
+
+            {
+              "name": "4. Register — password too short/weak (< 12 chars or no complexity) → 400",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.newguy\",\n  \"password\": \"short1A\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Password below the 12-char OWASP ASVS minimum — @Size(min=12) constraint.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 - Password too short', () => pm.response.to.have.status(400));"] } }]
+            },
+
+            {
+              "name": "5. GET /me — no cookie → 401",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] },
+                "description": "**Expected:** `401 Unauthorized` — not authenticated."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Not authenticated', () => pm.response.to.have.status(401));"] } }]
+            },
+
+            {
+              "name": "6. GET /me — revoked token (after logout) → 401  (blacklist)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] },
+                "description": "Reuses the CLIENT access token captured before `auth / 7. Logout CLIENT` revoked it — must be blocked by the blacklist.\n\nRun `auth / 7. Logout CLIENT` first (the variable still holds the now-revoked value).\n\n**Expected:** `401 Unauthorized`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Revoked token rejected', () => pm.response.to.have.status(401));"] } }]
+            },
+
+            {
+              "name": "7. POST /refresh — no cookie → 401",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] },
+                "description": "`AuthService.refresh` short-circuits to INVALID_REFRESH_TOKEN when the refresh cookie is absent.\n\n**Expected:** `401 Unauthorized`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Invalid refresh token', () => pm.response.to.have.status(401));"] } }]
+            },
+
+            {
+              "name": "8. POST /refresh — unknown/garbage token → 401",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "cb_refresh_token=not-a-real-token-value" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] },
+                "description": "Token not found in the refresh_token table.\n\n**Expected:** `401 Unauthorized`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Invalid refresh token', () => pm.response.to.have.status(401));"] } }]
+            },
+
+            {
+              "name": "9. POST /refresh — reused (already-rotated) token → 401  (revokes ALL client sessions)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "cb_refresh_token={{client_refresh_token_stale}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] },
+                "description": "Replays the refresh token captured right before `auth / 6. POST /refresh` rotated it — refresh tokens are single-use, so replaying the old one is treated as theft (REFRESH_TOKEN_REUSE_DETECTED) and revokes every refresh token for that user, including the current valid one.\n\nRun `auth / 6. POST /refresh` first. **Run this LAST in authErrors** — it invalidates `{{client_refresh_token}}` as a side effect.\n\n**Expected:** `401 Unauthorized`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Refresh token reuse detected', () => pm.response.to.have.status(401));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "authAccountLockout",
+          "description": "⚠️ RUN IN ISOLATION ONLY — not part of the standard top-to-bottom flow. `LoginAttemptStore` locks an account (423) after 5 failed logins for the SAME username, but `RateLimitFilter` also caps `/api/v1/auth/login` at 5 requests per 60s PER CLIENT IP (shared across every username). Running this folder back-to-back with `auth`/`authErrors` in the same 60s window means the 3 earlier login calls already consumed part of that budget, and this folder's 5 attempts will likely hit 429 before reaching the lockout threshold. To exercise this scenario reliably: wait 60+ seconds after the last `/api/v1/auth/login` call above (or run this folder alone via 'Run folder' in a fresh 60s window).",
+          "item": [
+            {
+              "name": "1. Register throwaway account for lockout test → 201",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.lockouttest\",\n  \"password\": \"LockoutTestPass1\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Dedicated username so this folder doesn't lock out `client.demo1` used everywhere else.\n\n**Expected:** `201 Created` (or `409` if this folder already ran once — either way, proceed)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('201 or 409 - account ready', () => pm.expect([201,409]).to.include(pm.response.code));"] } }]
+            },
+            {
+              "name": "2-6. Five wrong-password attempts (run x5) → 401 each",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.lockouttest\",\n  \"password\": \"WrongPassword1\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "`security.login-lockout.max-attempts` defaults to 5. Send this exact request 5 times in a row (use Postman's 'Run' with 5 iterations, or click Send 5 times) — the 5th failure locks the account.\n\n**Expected:** `401 Unauthorized` on each of the first 5 calls."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 - Invalid credentials', () => pm.response.to.have.status(401));"] } }]
+            },
+            {
+              "name": "7. Login (even with correct password) — ACCOUNT_LOCKED → 423",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.lockouttest\",\n  \"password\": \"LockoutTestPass1\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Run only after 5 consecutive failures above. The lockout is enforced BEFORE credentials are even checked, so this fails even with the correct password.\n\n**Expected:** `423 Locked` — cleared automatically after `security.login-lockout.duration-ms` (15 min default)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('423 - Account locked', () => pm.response.to.have.status(423));"] } }]
+            }
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "👥 Users — /api/v1/users",
+      "description": "User management back-office. MANAGER role required for every endpoint, including GET.",
+      "item": [
+
+        {
+          "name": "users",
+          "description": "Nominal: list, get by id, create MANAGER / CLIENT users, update role — all with the MANAGER access-token cookie.",
+          "item": [
+
+            {
+              "name": "1. GET /users — paginated list → 200",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users?page=1&size=20",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "20" }]
+                },
+                "description": "Also captures the seeded `admin` account's own id into `{{admin_user_id}}` (used by the self-role-modification 403 test in usersErrors) by scanning this page for username=admin."
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "const items = (pm.response.json().items) || [];",
+                "const admin = items.find(u => u.username === 'admin');",
+                "if (admin) { pm.collectionVariables.set('admin_user_id', admin.id); console.log('✅ admin_user_id saved: ' + admin.id); }",
+                "else { console.warn('⚠️ admin not found on page 1 — increase size or check DB state; self-role-modification test may fail'); }"
+              ] } }]
+            },
+
+            {
+              "name": "2. POST /users — Create MANAGER → 201",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"manager.created\",\n  \"password\": \"ManagerCreatedPass1\",\n  \"role\": \"MANAGER\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Only an authenticated MANAGER can create accounts with any role.\n\n**Expected:** `201 Created`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));"] } }]
+            },
+
+            {
+              "name": "3. POST /users — Create CLIENT → 201  (user_id auto-saved)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"client.created\",\n  \"password\": \"ClientCreatedPass1\",\n  \"role\": \"CLIENT\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "A MANAGER can also create CLIENT accounts. The created id is parsed from the `Location` response header into `{{user_id}}` for the PATCH/GET requests below.\n\n**Expected:** `201 Created`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                "const location = pm.response.headers.get('Location');",
+                "if (location) {",
+                "    const id = location.split('/').pop();",
+                "    pm.collectionVariables.set('user_id', id);",
+                "    console.log('✅ user_id saved: ' + id);",
+                "}"
+              ] } }]
+            },
+
+            {
+              "name": "4. GET /users/{id} → 200",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/{{user_id}}",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{user_id}}"]
+                },
+                "description": "Requires `{{user_id}}` to be set — run `users / 3. Create CLIENT` first.\n\n**Expected:** `200 OK`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+
+            {
+              "name": "5. PATCH /{id}/role → MANAGER → 204",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/{{user_id}}/role",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{user_id}}","role"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"MANAGER\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Promotes `{{user_id}}` to MANAGER.\n\n**Expected:** `204 No Content`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('204 - Role updated to MANAGER', () => pm.response.to.have.status(204));"] } }]
+            },
+
+            {
+              "name": "6. PATCH /{id}/role → CLIENT → 204",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/{{user_id}}/role",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{user_id}}","role"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"CLIENT\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Downgrades `{{user_id}}` back to CLIENT.\n\n**Expected:** `204 No Content`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('204 - Role updated to CLIENT', () => pm.response.to.have.status(204));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "usersAccesses",
+          "description": "Access restriction scenarios: missing cookie or CLIENT role → 403.",
+          "item": [
+
+            {
+              "name": "1. GET /users — no cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "description": "**Expected:** `403 Forbidden` — MANAGER role required."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - MANAGER role required', () => pm.response.to.have.status(403));"] } }]
+            },
+
+            {
+              "name": "2. GET /users — CLIENT cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "description": "**Expected:** `403 Forbidden` — CLIENT role insufficient."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot list users', () => pm.response.to.have.status(403));"] } }]
+            },
+
+            {
+              "name": "3. POST /users — CLIENT cookie → 403",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"hacker\",\n  \"password\": \"HackerPassword1\",\n  \"role\": \"MANAGER\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "**Expected:** `403 Forbidden` — CLIENT role insufficient."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot create users', () => pm.response.to.have.status(403));"] } }]
+            },
+
+            {
+              "name": "4. PATCH /{id}/role — no cookie → 403",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/{{user_id}}/role",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{user_id}}","role"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"MANAGER\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "**Expected:** `403 Forbidden` — MANAGER role required."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - MANAGER role required', () => pm.response.to.have.status(403));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "usersErrors",
+          "description": "Business / validation errors on user management endpoints (MANAGER cookie required).",
+          "item": [
+
+            {
+              "name": "1. GET /users/{id} — not found (9999) → 404",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/users/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","users","9999"] },
+                "description": "**Expected:** `404 Not Found`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('404 - User not found', () => pm.response.to.have.status(404));"] } }]
+            },
+
+            {
+              "name": "2. PATCH /{id}/role — user not found (9999) → 404",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/9999/role",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","9999","role"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"CLIENT\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "**Expected:** `404 Not Found` — non-existent ID."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('404 - User not found', () => pm.response.to.have.status(404));"] } }]
+            },
+
+            {
+              "name": "3. POST /users — blank username → 400",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"\",\n  \"password\": \"ManagerCreatedPass1\",\n  \"role\": \"MANAGER\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Username blank — @NotBlank constraint.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 - Blank username', () => pm.response.to.have.status(400));"] } }]
+            },
+
+            {
+              "name": "4. POST /users — password too weak (< 12 chars / no complexity) → 400",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"short1A\",\n  \"role\": \"CLIENT\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Password too short — @Size(min=12) constraint.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 - Password too short', () => pm.response.to.have.status(400));"] } }]
+            },
+
+            {
+              "name": "5. POST /users — username already taken → 409",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api","v1","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"manager.created\",\n  \"password\": \"ManagerCreatedPass1\",\n  \"role\": \"MANAGER\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Username already exists in DB — run `users / 2. Create MANAGER` first.\n\n**Expected:** `409 Conflict`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('409 - Username taken', () => pm.response.to.have.status(409));"] } }]
+            },
+
+            {
+              "name": "6. PATCH /{id}/role — invalid role (SUPERADMIN) → 400",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/{{user_id}}/role",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{user_id}}","role"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"SUPERADMIN\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Unknown role — must be CLIENT or MANAGER.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 - Invalid role value', () => pm.response.to.have.status(400));"] } }]
+            },
+
+            {
+              "name": "7. GET /users/{id} — invalid id (0) → 400",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/users/0", "host": ["{{baseUrl}}"], "path": ["api","v1","users","0"] },
+                "description": "id must be a positive number — @Min(1) constraint.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 - Invalid id', () => pm.response.to.have.status(400));"] } }]
+            },
+
+            {
+              "name": "8. PATCH /{id}/role — self-role modification (own account) → 403",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/{{admin_user_id}}/role",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","users","{{admin_user_id}}","role"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"CLIENT\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "`User.assertRoleModifiableBy` forbids a manager from changing their OWN role, even to a role change that would otherwise be valid — prevents an admin from accidentally locking themselves out. `{{admin_user_id}}` is captured by `users / 1. GET /users`.\n\n**Expected:** `403 Forbidden` (this is a business rule, distinct from the generic MANAGER-role-required 403 — it fires even though the caller IS a MANAGER)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - Cannot modify own role', () => pm.response.to.have.status(403));"] } }]
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "📊 Simulation — /api/v1/simulation",
+      "description": "Mortgage credit simulation. Public endpoint — no authentication required. All five CSP profiles now have active credit-rate rows.",
+      "item": [
+
+        {
+          "name": "simulation",
+          "description": "Happy-path simulations: approved results across CSP profiles and both financing products.",
+          "item": [
+
+            {
+              "name": "UC-01 — Civil Servant (FONC), CONVENTIONAL",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 240,\n  \"cspCode\": \"FONC\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 15000,\n  \"age\": 35\n}" }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "UC-02 — Private Sector Employee (SALA), co-borrower",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                "body": { "mode": "raw", "raw": "{\n  \"amount\": 450000,\n  \"duration\": 240,\n  \"cspCode\": \"SALA\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 550000,\n  \"monthlyIncome\": 12000,\n  \"age\": 32,\n  \"coBorrower\": true,\n  \"coBorrowerMonthlyIncome\": 8000\n}" }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "UC-03 — Freelancer (INDE), edge min amount/duration",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                "body": { "mode": "raw", "raw": "{\n  \"amount\": 70000,\n  \"duration\": 12,\n  \"cspCode\": \"INDE\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 90000,\n  \"monthlyIncome\": 8000,\n  \"age\": 40\n}" }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "UC-04 — Mourabaha Immobilier (participative financing)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 240,\n  \"cspCode\": \"SALA\",\n  \"productType\": \"MOURABAHA\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 15000,\n  \"age\": 35\n}" },
+                "description": "MOURABAHA has no CSP-specific credit-rate lookup — returns marginHt/vatOnMargin/marginTtc/monthlyPaymentTtc instead of interest fields."
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('productType is MOURABAHA', () => pm.expect(pm.response.json().productType).to.eql('MOURABAHA'));"
+              ] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "simulationErrors",
+          "description": "Simulation error scenarios: BAM business rules (422), CSP not found (404), validation (400), unsupported media type (415).",
+          "item": [
+
+            {
+              "name": "UC-05 — BAM Business Rules (422 Unprocessable Entity)",
+              "item": [
+                {
+                  "name": "422 — FONC | duration 241 > RETR/FONC-independent CSP max — DURATION_LIMIT_EXCEEDED",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 300000,\n  \"duration\": 241,\n  \"cspCode\": \"RETR\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 400000,\n  \"monthlyIncome\": 20000,\n  \"age\": 50\n}" },
+                    "description": "RETR's credit-rate row caps maxDurationMonths at 240 (see changeset 002) — 241 exceeds it.\n\n**Expected:** `422` — DURATION_LIMIT_EXCEEDED"
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"] } }]
+                },
+                {
+                  "name": "422 — LTV > 90% of property value — DEPOSIT_INSUFFICIENT",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 550000,\n  \"duration\": 240,\n  \"cspCode\": \"FONC\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 580000,\n  \"monthlyIncome\": 30000,\n  \"age\": 30\n}" },
+                    "description": "550000 / 580000 ≈ 94.8% > 90% BAM max LTV (10% minimum deposit rule).\n\n**Expected:** `422` — DEPOSIT_INSUFFICIENT"
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"] } }]
+                },
+                {
+                  "name": "422 — Monthly payment > 40% of income — DEBT_RATIO_EXCEEDED",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 240,\n  \"cspCode\": \"FONC\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 1000,\n  \"age\": 30\n}" },
+                    "description": "Minimum allowed income (1 000 MAD) against a 500 000 MAD loan — all-in monthly payment far exceeds 40% of income.\n\n**Expected:** `422` — DEBT_RATIO_EXCEEDED"
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"] } }]
+                },
+                {
+                  "name": "422 — Age at maturity > 75 — AGE_LIMIT_EXCEEDED",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 240,\n  \"cspCode\": \"FONC\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 30000,\n  \"age\": 60\n}" },
+                    "description": "age (60) + duration in years (20) = 80 > maxAgeAtMaturity (75, applies to every CSP since changeset 021).\n\n**Expected:** `422` — AGE_LIMIT_EXCEEDED"
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"] } }]
+                }
+              ]
+            },
+
+            {
+              "name": "UC-06 — CSP Not Found (404 Not Found)",
+              "description": "All 5 CSP codes are active by default, so 404 is now only reachable by deactivating a credit-rate record first (MANAGER-only). This chain deactivates INDE, proves the 404, then reactivates it.",
+              "item": [
+                {
+                  "name": "1. PATCH /credit-rates/5 — deactivate INDE (setup)",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      { "key": "Content-Type", "value": "application/json" },
+                      { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                    ],
+                    "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/5", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","5"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+                    "description": "id 5 = INDE (see changeset `002-insert-credit-rate`). Requires `auth / 3. Login MANAGER` to have run first.\n\n**Expected:** `204 No Content`"
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('204 - INDE deactivated', () => pm.response.to.have.status(204));"] } }]
+                },
+                {
+                  "name": "2. 404 — simulate INDE (now inactive)",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 300000,\n  \"duration\": 120,\n  \"cspCode\": \"INDE\",\n  \"productType\": \"CONVENTIONAL\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 400000,\n  \"monthlyIncome\": 12000,\n  \"age\": 35\n}" },
+                    "description": "**Expected:** `404 Not Found` — \"CSP not supported or inactive.\""
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+                },
+                {
+                  "name": "3. PATCH /credit-rates/5 — reactivate INDE (teardown)",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      { "key": "Content-Type", "value": "application/json" },
+                      { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                    ],
+                    "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/5", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","5"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"active\": true\n}" },
+                    "description": "Restores INDE so later runs of `simulation / UC-03` keep passing.\n\n**Expected:** `204 No Content`"
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('204 - INDE reactivated', () => pm.response.to.have.status(204));"] } }]
+                }
+              ]
+            },
+
+            {
+              "name": "UC-07 — Validation Errors (400 Bad Request)",
+              "item": [
+                {
+                  "name": "400 — Missing amount",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"duration\": 120,\n  \"cspCode\": \"FONC\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 400000,\n  \"monthlyIncome\": 12000,\n  \"age\": 35\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                },
+                {
+                  "name": "400 — Amount below minimum (< 70 000)",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 50000,\n  \"duration\": 120,\n  \"cspCode\": \"FONC\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 400000,\n  \"monthlyIncome\": 12000,\n  \"age\": 35\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                },
+                {
+                  "name": "400 — Amount above maximum (> 30 000 000)",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 35000000,\n  \"duration\": 120,\n  \"cspCode\": \"FONC\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 40000000,\n  \"monthlyIncome\": 500000,\n  \"age\": 35\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                },
+                {
+                  "name": "400 — Duration above global maximum (> 300 months)",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 301,\n  \"cspCode\": \"FONC\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 15000,\n  \"age\": 30\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                },
+                {
+                  "name": "400 — Missing monthlyIncome",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 120,\n  \"cspCode\": \"SALA\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"age\": 35\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                },
+                {
+                  "name": "400 — Missing age",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 120,\n  \"cspCode\": \"SALA\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 15000\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                },
+                {
+                  "name": "400 — Invalid cspCode (unknown code)",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\n  \"amount\": 500000,\n  \"duration\": 120,\n  \"cspCode\": \"XXXX\",\n  \"nationalityCode\": \"MA\",\n  \"moroccanResident\": true,\n  \"propertyValue\": 600000,\n  \"monthlyIncome\": 15000,\n  \"age\": 35\n}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+                }
+              ]
+            },
+
+            {
+              "name": "UC-08 — Unsupported Media Type (415)",
+              "item": [
+                {
+                  "name": "415 — Content-Type: text/plain",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "text/plain" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "{\"amount\":500000,\"duration\":120,\"cspCode\":\"FONC\",\"nationalityCode\":\"MA\",\"moroccanResident\":true,\"propertyValue\":600000,\"monthlyIncome\":15000,\"age\":35}" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 415', () => pm.response.to.have.status(415));"] } }]
+                },
+                {
+                  "name": "415 — Content-Type: application/xml",
+                  "request": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/xml" }],
+                    "url": { "raw": "{{baseUrl}}/api/v1/simulation", "host": ["{{baseUrl}}"], "path": ["api","v1","simulation"] },
+                    "body": { "mode": "raw", "raw": "<request><amount>500000</amount></request>" }
+                  },
+                  "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 415', () => pm.response.to.have.status(415));"] } }]
+                }
+              ]
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "⚙️ BAM Parameters — /api/v1/bam-parameters",
+      "description": "Back-office BAM regulatory parameters. MANAGER role required. Endpoints now take an {id} path variable (single active row, id=1).",
+      "item": [
+
+        {
+          "name": "bamParameters",
+          "description": "Nominal: paginated GET, GET by id, and partial PATCH — all with the MANAGER access-token cookie.",
+          "item": [
+
+            {
+              "name": "GET — paginated list",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bam-parameters?page=1&size=20",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "20" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "GET /{id}",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — processingFeesRatio",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"processingFeesRatio\": 0.0035\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — minProcessingFees + maxProcessingFees",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"minProcessingFees\": 3200.00,\n  \"maxProcessingFees\": 6500.00\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — ltvRatio + maxDebtRatio",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ltvRatio\": 0.9000,\n  \"maxDebtRatio\": 0.4000\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Restores the seeded values — safe to re-run."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — active: true (no-op reactivate)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "bamParametersAccesses",
+          "description": "Access restriction scenarios: CLIENT cookie or no cookie → 403.",
+          "item": [
+
+            {
+              "name": "1. GET /bam-parameters — CLIENT cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters"] },
+                "description": "**Expected:** `403 Forbidden`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot access bam-parameters', () => pm.response.to.have.status(403));"] } }]
+            },
+
+            {
+              "name": "2. GET /bam-parameters — no cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters"] },
+                "description": "**Expected:** `403 Forbidden`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - Anonymous cannot access bam-parameters', () => pm.response.to.have.status(403));"] } }]
+            },
+
+            {
+              "name": "3. PATCH /{id} — CLIENT cookie → 403",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "**Expected:** `403 Forbidden`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot patch bam-parameters', () => pm.response.to.have.status(403));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "bamParametersErrors",
+          "description": "Validation and business errors on BAM parameters endpoints (MANAGER cookie required).",
+          "item": [
+
+            {
+              "name": "GET 400 — page=0 (invalid, must be >= 1)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bam-parameters?page=0&size=20",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters"],
+                  "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "GET 400 — size=51 (exceeds max 50)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bam-parameters?page=1&size=51",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "51" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "GET /{id} 400 — invalid id (0)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/0", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","0"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "GET /{id} 404 — not found (9999)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","9999"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+            },
+            {
+              "name": "PATCH 400 — Negative/zero processingFeesRatio",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"processingFeesRatio\": 0.0\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "PATCH 400 — processingFeesRatio exceeds cap (0.01)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"processingFeesRatio\": 0.05\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "PATCH 404 — ID not found (9999)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","9999"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+            },
+            {
+              "name": "PATCH 400 — minProcessingFees > maxProcessingFees (cross-field business rule)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/bam-parameters/{{bam_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","bam-parameters","{{bam_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"minProcessingFees\": 9000.00,\n  \"maxProcessingFees\": 3000.00\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Distinct from a plain @DecimalMin field violation — `BamParametersModel.validateProcessingFeesRange` rejects min > max as a business rule (`BamParametersException.INVALID_PROCESSING_FEES_RANGE`), only when both fields are supplied together.\n\n**Expected:** `400 Bad Request` — \"minProcessingFees cannot be greater than maxProcessingFees.\""
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "💹 Credit Rates — /api/v1/credit-rates",
+      "description": "Back-office credit interest rates per CSP profile. MANAGER role required. NEW resource — not present in the previous version of this collection.",
+      "item": [
+
+        {
+          "name": "creditRates",
+          "description": "Nominal: paginated GET, GET by id, and partial PATCH on the SALA record (id=2) — all with the MANAGER access-token cookie.",
+          "item": [
+
+            {
+              "name": "GET — paginated list",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/credit-rates?page=1&size=20",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "20" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "GET /{id}",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "description": "id=2 → SALA (see changeset `002-insert-credit-rate`)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": [
+                "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                "pm.test('cspCode is SALA', () => pm.expect(pm.response.json().cspCode).to.eql('SALA'));"
+              ] } }]
+            },
+            {
+              "name": "PATCH /{id} — rateMin + rateMax",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rateMin\": 5.00,\n  \"rateMax\": 5.50\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Restores the seeded SALA rate — safe to re-run."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — minDurationMonths + maxDurationMonths (must be paired)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"minDurationMonths\": 12,\n  \"maxDurationMonths\": 240\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Restores the seeded SALA duration range — safe to re-run."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — active: true (no-op reactivate)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "creditRatesAccesses",
+          "description": "Access restriction scenarios: CLIENT cookie or no cookie → 403.",
+          "item": [
+
+            {
+              "name": "1. GET /credit-rates — no cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - Anonymous cannot access credit-rates', () => pm.response.to.have.status(403));"] } }]
+            },
+            {
+              "name": "2. GET /credit-rates — CLIENT cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot access credit-rates', () => pm.response.to.have.status(403));"] } }]
+            },
+            {
+              "name": "3. PATCH /{id} — CLIENT cookie → 403",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "body": { "mode": "raw", "raw": "{\n  \"active\": true\n}" }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot patch credit-rates', () => pm.response.to.have.status(403));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "creditRatesErrors",
+          "description": "Validation and business errors on credit-rates endpoints (MANAGER cookie required).",
+          "item": [
+
+            {
+              "name": "GET /{id} 404 — not found (9999)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","9999"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+            },
+            {
+              "name": "GET /{id} 400 — invalid id (0)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/0", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","0"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "PATCH 400 — only minDurationMonths provided (must be paired with max)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"minDurationMonths\": 12\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "minDurationMonths and maxDurationMonths must be provided together.\n\n**Expected:** `400 Bad Request`"
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "PATCH 400 — negative/zero rateMin",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/{{credit_rate_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","{{credit_rate_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rateMin\": 0\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "PATCH 404 — ID not found (9999)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/credit-rates/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","credit-rates","9999"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "🕌 Mourabaha Parameters — /api/v1/mourabaha-parameters",
+      "description": "Back-office Mourabaha Immobilier (participative financing) pricing parameters. MANAGER role required. NEW resource — not present in the previous version of this collection.",
+      "item": [
+
+        {
+          "name": "mourabahaParameters",
+          "description": "Nominal: paginated GET, GET by id, and partial PATCH — all with the MANAGER access-token cookie.",
+          "item": [
+
+            {
+              "name": "GET — paginated list",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/mourabaha-parameters?page=1&size=20",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "20" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "GET /{id}",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/{{mourabaha_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","{{mourabaha_parameters_id}}"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — profitRate",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/{{mourabaha_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","{{mourabaha_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"profitRate\": 5.25\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Restores the seeded profit rate (Bank Al Yousr reference: Taux HT 5.25%) — safe to re-run."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            },
+            {
+              "name": "PATCH /{id} — vatRate",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/{{mourabaha_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","{{mourabaha_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"vatRate\": 0.10\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Restores the seeded VAT rate (10%) — safe to re-run."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "mourabahaParametersAccesses",
+          "description": "Access restriction scenarios: CLIENT cookie or no cookie → 403.",
+          "item": [
+
+            {
+              "name": "1. GET /mourabaha-parameters — no cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - Anonymous cannot access mourabaha-parameters', () => pm.response.to.have.status(403));"] } }]
+            },
+            {
+              "name": "2. GET /mourabaha-parameters — CLIENT cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot access mourabaha-parameters', () => pm.response.to.have.status(403));"] } }]
+            },
+            {
+              "name": "3. PATCH /{id} — CLIENT cookie → 403",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/{{mourabaha_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","{{mourabaha_parameters_id}}"] },
+                "body": { "mode": "raw", "raw": "{\n  \"active\": true\n}" }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot patch mourabaha-parameters', () => pm.response.to.have.status(403));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "mourabahaParametersErrors",
+          "description": "Validation and business errors on mourabaha-parameters endpoints (MANAGER cookie required).",
+          "item": [
+
+            {
+              "name": "GET /{id} 404 — not found (9999)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","9999"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+            },
+            {
+              "name": "PATCH 400 — negative/zero profitRate",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/{{mourabaha_parameters_id}}", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","{{mourabaha_parameters_id}}"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"profitRate\": 0\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "PATCH 404 — ID not found (9999)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }
+                ],
+                "url": { "raw": "{{baseUrl}}/api/v1/mourabaha-parameters/9999", "host": ["{{baseUrl}}"], "path": ["api","v1","mourabaha-parameters","9999"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "🧾 Audit Log — /api/v1/audit-log",
+      "description": "Back-office compliance audit trail (logins, simulations, BAM rejections, parameter/role changes). MANAGER role required, read-only. NEW resource — not present in the previous version of this collection.",
+      "item": [
+
+        {
+          "name": "auditLog",
+          "description": "Nominal: paginated GET with the MANAGER access-token cookie.",
+          "item": [
+
+            {
+              "name": "GET — default pagination (page=1, size=20)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/audit-log", "host": ["{{baseUrl}}"], "path": ["api","v1","audit-log"] },
+                "description": "Should already contain entries generated earlier in this run (logins, simulations, role updates)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "GET — custom size (page=1, size=5)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit-log?page=1&size=5",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","audit-log"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "5" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "auditLogAccesses",
+          "description": "Access restriction scenarios: CLIENT cookie or no cookie → 403.",
+          "item": [
+
+            {
+              "name": "1. GET /audit-log — no cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/audit-log", "host": ["{{baseUrl}}"], "path": ["api","v1","audit-log"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - Anonymous cannot access audit-log', () => pm.response.to.have.status(403));"] } }]
+            },
+            {
+              "name": "2. GET /audit-log — CLIENT cookie → 403",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{client_access_token}}" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/audit-log", "host": ["{{baseUrl}}"], "path": ["api","v1","audit-log"] }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - CLIENT cannot access audit-log', () => pm.response.to.have.status(403));"] } }]
+            }
+
+          ]
+        },
+
+        {
+          "name": "auditLogErrors",
+          "description": "Validation errors on the audit-log endpoint (MANAGER cookie required).",
+          "item": [
+
+            {
+              "name": "GET 400 — page=0 (invalid, must be >= 1)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit-log?page=0&size=20",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","audit-log"],
+                  "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            },
+            {
+              "name": "GET 400 — size=51 (exceeds max 50)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/audit-log?page=1&size=51",
+                  "host": ["{{baseUrl}}"], "path": ["api","v1","audit-log"],
+                  "query": [{ "key": "page", "value": "1" }, { "key": "size", "value": "51" }]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "🔍 Infrastructure",
+      "description": "Health check, Swagger UI, unknown routes.",
+      "item": [
+        {
+          "name": "GET /actuator/health — application health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator","health"] },
+            "description": "Public — permitAll in SecurityConfig."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "GET /actuator/info — build/app info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/actuator/info", "host": ["{{baseUrl}}"], "path": ["actuator","info"] },
+            "description": "Public — explicitly permitAll alongside /actuator/health in SecurityConfig, ahead of the catch-all `/actuator/**` → hasRole(MANAGER) rule."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "GET /actuator/metrics — no cookie → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/actuator/metrics", "host": ["{{baseUrl}}"], "path": ["actuator","metrics"] },
+            "description": "`metrics` is exposed (`management.endpoints.web.exposure.include`) but falls under the `/actuator/**` → hasRole(MANAGER) catch-all rule in SecurityConfig — distinct from `/actuator/health` and `/actuator/info` which are explicitly permitAll.\n\n**Expected:** `403 Forbidden`"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403 - MANAGER role required for /actuator/metrics', () => pm.response.to.have.status(403));"] } }]
+        },
+        {
+          "name": "GET /actuator/metrics — MANAGER cookie → 200",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+            "url": { "raw": "{{baseUrl}}/actuator/metrics", "host": ["{{baseUrl}}"], "path": ["actuator","metrics"] },
+            "description": "**Expected:** `200 OK` with a MANAGER session."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "GET /swagger/credit-bladi/v3/swagger-ui.html — Swagger UI (MANAGER)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "cb_access_token={{manager_access_token}}" }],
+            "url": { "raw": "{{baseUrl}}/swagger/credit-bladi/v3/swagger-ui.html", "host": ["{{baseUrl}}"], "path": ["swagger","credit-bladi","v3","swagger-ui.html"] },
+            "description": "Configured via `springdoc.swagger-ui.path` (application.properties) — NOT the springdoc default `/swagger-ui.html`. Requires MANAGER unless `swagger.public=true`. springdoc typically redirects this URL to its index page, hence the broader status check."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200 or redirect to index', () => pm.expect(pm.response.code).to.be.oneOf([200, 302]));"] } }]
+        },
+        {
+          "name": "404 — Unknown endpoint (NoResourceFoundException)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/unknown", "host": ["{{baseUrl}}"], "path": ["api","v1","unknown"] },
+            "description": "`ApiExceptionHandler.handleNoResourceFound` maps `NoResourceFoundException` to `HttpStatus.NOT_FOUND` — verified directly against the handler source.\n\n**Expected:** `404 Not Found`"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }]
+        }
+      ]
+    }
+
+  ]
+}

@@ -1,0 +1,80 @@
+# OWASP ZAP Automation Framework config — DAST scan of Credit Bladi.
+# Covers ASVS V5 (input validation), V3 (session mgmt), V4 (access control), V13 (API).
+#
+# Prereq: start the app first (dev profile, so JWT_SECRET has a default):
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+#
+# Run with Docker:
+#   docker run -v $(pwd)/security:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable \
+#     zap.sh -cmd -autorun /zap/wrk/zap-automation.yaml
+#
+# Uses host.docker.internal so the container can reach the app on the host's localhost:8080.
+
+env:
+  contexts:
+    - name: credit-bladi
+      urls:
+        - "http://host.docker.internal:8080"
+      authentication:
+        method: "json"
+        parameters:
+          loginUrl: "http://host.docker.internal:8080/api/v1/auth/login"
+          loginRequestData: '{"username":"{%username%}","password":"{%password%}"}'
+        verification:
+          method: "response"
+          loggedInRegex: "\\Q\"role\"\\E"
+          loggedOutRegex: "\\QCB-401\\E"
+      sessionManagement:
+        method: "cookie"
+      users:
+        - name: "manager"
+          credentials:
+            username: "admin"
+            password: "admin123"
+  parameters:
+    failOnError: true
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+
+  - type: spider
+    parameters:
+      context: credit-bladi
+      user: manager
+      url: "http://host.docker.internal:8080/swagger/credit-bladi/v3/api-docs.json"
+
+  - type: openapi
+    parameters:
+      context: credit-bladi
+      user: manager
+      apiUrl: "http://host.docker.internal:8080/swagger/credit-bladi/v3/api-docs.json"
+      targetUrl: "http://host.docker.internal:8080"
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  # Active scan is intrusive (sends attack payloads) — only run against a disposable
+  # dev/staging instance, never against production.
+  - type: activeScan
+    parameters:
+      context: credit-bladi
+      user: manager
+    policyDefinition:
+      defaultStrength: "medium"
+      defaultThreshold: "medium"
+
+  - type: report
+    parameters:
+      template: "traditional-html"
+      reportDir: "/zap/wrk"
+      reportFile: "zap-report"
+      reportTitle: "Credit Bladi — ASVS DAST report"
+
+  - type: exitStatus
+    parameters:
+      errorLevel: "High"
+      warnLevel: "Medium"

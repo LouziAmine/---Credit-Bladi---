@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Properties>
+        <Property name="name">${spring:spring.application.name}</Property>
+        <Property name="version">${spring:code.version}</Property>
+        <Property name="rootLevel">${spring:logging.level.root:-INFO}</Property>
+        <Property name="appLevel">${spring:logging.level.com.credit.bladi:-DEBUG}</Property>
+        <Property name="logFile">logs/credit-bladi.log</Property>
+        <Property name="jsonFile">logs/credit-bladi.json</Property>
+    </Properties>
+
+    <Appenders>
+
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[BLADI] [%-5level] ${name} ${version} [%X{requestId}] [%d{HH:mm:ss.SSS}] %c{1} : %msg %xEx%n"/>
+        </Console>
+
+        <RollingFile name="File"
+                     fileName="${logFile}"
+                     filePattern="logs/archive/credit-bladi-%d{yyyy-MM-dd}.%i.log.gz"
+                     append="true">
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+            <PatternLayout pattern="[BLADI] [%-5level] ${name} ${version} [%X{requestId}] [%d] %c{1} : %msg %xEx%n"/>
+        </RollingFile>
+
+        <RollingFile name="JsonFile"
+                     fileName="${jsonFile}"
+                     filePattern="logs/archive/credit-bladi-%d{yyyy-MM-dd}.%i.json.gz"
+                     append="true">
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+            <JsonLayout compact="true" eventEol="true" stacktraceAsString="true" properties="true">
+                <KeyValuePair key="appName"    value="${name}"/>
+                <KeyValuePair key="appVersion" value="${version}"/>
+                <KeyValuePair key="requestId"  value="$${ctx:requestId}"/>
+            </JsonLayout>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+
+        <Logger name="com.credit.bladi" level="${appLevel}" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+            <AppenderRef ref="JsonFile"/>
+        </Logger>
+
+        <Root level="${rootLevel}">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+            <AppenderRef ref="JsonFile"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>

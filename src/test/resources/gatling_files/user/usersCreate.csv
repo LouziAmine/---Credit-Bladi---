@@ -1,0 +1,6 @@
+usernamePrefix,password,role
+perf.usr.client1,PerfLoad2026Aa1,CLIENT
+perf.usr.client2,SecureP4ssBravo,CLIENT
+perf.usr.client3,AnotherPass99Zz,CLIENT
+perf.usr.manager1,ManagerPass2026Q,MANAGER
+perf.usr.client4,YetAnotherPass77,CLIENT

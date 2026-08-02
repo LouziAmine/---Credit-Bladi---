@@ -1,0 +1,423 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: "001-create-credit-rate"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS credit_rate (
+                id                   BIGINT PRIMARY KEY AUTO_INCREMENT,
+                csp_code             VARCHAR(10) NOT NULL,
+                rate_min             DECIMAL(5,2),
+                rate_max             DECIMAL(5,2),
+                min_duration_months  INT,
+                max_duration_months  INT,
+                active               BOOLEAN DEFAULT TRUE
+              )
+
+  - changeSet:
+      id: "002-insert-credit-rate"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO credit_rate (id, csp_code, rate_min, rate_max, min_duration_months, max_duration_months, active) VALUES
+              (1, 'RETR', 4.6, 4.6,  12, 240, true),
+              (2, 'SALA', 5.0, 5.5,  12, 240, true),
+              (3, 'FONC', 4.8, 5.0,  12, 300, true),
+              (4, 'PROF', 5.5, 6.0,  12, 180, true),
+              (5, 'INDE', 6.0, 6.5,  12, 180, true)
+
+  - changeSet:
+      id: "003-create-bam-parameters"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS bam_parameters (
+                id                      BIGINT PRIMARY KEY AUTO_INCREMENT,
+                processing_fees_ratio   DECIMAL(6,4) NOT NULL,
+                min_processing_fees     DECIMAL(10,2) NOT NULL,
+                max_processing_fees     DECIMAL(10,2) NOT NULL,
+                registration_fee_ratio  DECIMAL(6,4) NOT NULL,
+                land_conservation_ratio DECIMAL(6,4) NOT NULL,
+                notary_fee_ratio        DECIMAL(6,4) NOT NULL,
+                active                  BOOLEAN DEFAULT TRUE
+              )
+
+  - changeSet:
+      id: "004-insert-bam-parameters"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO bam_parameters (id, processing_fees_ratio, min_processing_fees, max_processing_fees, registration_fee_ratio, land_conservation_ratio, notary_fee_ratio, active) VALUES
+              (1, 0.0030, 3000.00, 6000.00, 0.0400, 0.0150, 0.0100, true)
+
+  - changeSet:
+      id: "005-create-app-user"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS app_user (
+                id        BIGINT PRIMARY KEY AUTO_INCREMENT,
+                username  VARCHAR(100) NOT NULL UNIQUE,
+                password  VARCHAR(255) NOT NULL,
+                role      VARCHAR(50)  NOT NULL DEFAULT 'CLIENT'
+              )
+
+  - changeSet:
+      id: "006-insert-default-manager"
+      author: bladi
+      context: dev
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO app_user (username, password, role) VALUES
+              ('admin', '$2a$10$XjC7o7icHSbTfinisbVvmO6Soi.nvNgCqNpYO8Jr92DNXA842/zOG', 'MANAGER')
+
+  - changeSet:
+      id: "007-create-revoked-token"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS revoked_token (
+                id         BIGINT PRIMARY KEY AUTO_INCREMENT,
+                token      VARCHAR(2048) NOT NULL UNIQUE,
+                expires_at BIGINT        NOT NULL
+              )
+
+  - changeSet:
+      id: "008-create-refresh-token"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS refresh_token (
+                id         BIGINT  PRIMARY KEY AUTO_INCREMENT,
+                token      VARCHAR(128) NOT NULL UNIQUE,
+                user_id    BIGINT  NOT NULL,
+                expires_at BIGINT  NOT NULL,
+                revoked    BOOLEAN NOT NULL DEFAULT FALSE
+              )
+
+  - changeSet:
+      id: "009-add-performance-indexes"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_credit_rate_csp_active ON credit_rate (csp_code, active);
+              CREATE INDEX IF NOT EXISTS idx_bam_parameters_active ON bam_parameters (active);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_credit_rate_csp_active;
+              DROP INDEX IF EXISTS idx_bam_parameters_active;
+
+  - changeSet:
+      id: "010-refresh-token-fk-user"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE refresh_token
+                ADD CONSTRAINT fk_refresh_token_user
+                FOREIGN KEY (user_id) REFERENCES app_user(id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE refresh_token DROP CONSTRAINT fk_refresh_token_user;
+
+  - changeSet:
+      id: "011-bam-parameters-ltv-dti"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters ADD COLUMN ltv_ratio DECIMAL(5,4) NOT NULL DEFAULT 0.9000;
+              ALTER TABLE bam_parameters ADD COLUMN max_debt_ratio DECIMAL(5,4) NOT NULL DEFAULT 0.4000;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters DROP COLUMN ltv_ratio;
+              ALTER TABLE bam_parameters DROP COLUMN max_debt_ratio;
+
+  - changeSet:
+      id: "012-create-audit-log"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS audit_log (
+                id           BIGINT PRIMARY KEY AUTO_INCREMENT,
+                username     VARCHAR(100),
+                action       VARCHAR(100) NOT NULL,
+                ip_address   VARCHAR(45),
+                details      VARCHAR(500),
+                performed_at TIMESTAMP NOT NULL
+              )
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS audit_log;
+
+  - changeSet:
+      id: "013-unique-active-credit-rate-per-csp"
+      author: bladi
+      comment: >
+        H2 does not support the standard "CREATE INDEX ... WHERE" partial-index syntax,
+        so the active-only uniqueness rule is expressed via a generated column instead:
+        active_csp_code mirrors csp_code only when active = true (NULL otherwise), and a
+        plain unique index on that column rejects two active rows for the same csp_code
+        (NULLs never collide on a unique index).
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE credit_rate
+                ADD COLUMN active_csp_code VARCHAR(10)
+                GENERATED ALWAYS AS (CASE WHEN active THEN csp_code ELSE NULL END);
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_rate_unique_active_csp
+              ON credit_rate (active_csp_code);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_credit_rate_unique_active_csp;
+              ALTER TABLE credit_rate DROP COLUMN active_csp_code;
+
+  - changeSet:
+      id: "014-bam-parameters-max-age-at-maturity-retr"
+      author: bladi
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters
+                ADD COLUMN max_age_at_maturity_retr INT NOT NULL DEFAULT 75;
+      rollback:
+        - sql:
+            sql: ALTER TABLE bam_parameters DROP COLUMN max_age_at_maturity_retr;
+
+  - changeSet:
+      id: "015-unique-active-bam-parameters"
+      author: bladi
+      comment: >
+        Only one bam_parameters row may be active at a time (it drives every fee/rate
+        computation bank-wide). Same generated-column technique as changeset 013, but
+        keyed on a constant marker since bam_parameters has no natural partition key.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters
+                ADD COLUMN active_marker INT
+                GENERATED ALWAYS AS (CASE WHEN active THEN 1 ELSE NULL END);
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_bam_parameters_unique_active
+              ON bam_parameters (active_marker);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_bam_parameters_unique_active;
+              ALTER TABLE bam_parameters DROP COLUMN active_marker;
+
+  - changeSet:
+      id: "016-bam-parameters-adi-monthly-rate"
+      author: bladi
+      comment: >
+        ADI (Assurance Décès-Invalidité) is a BAM-mandated monthly insurance premium
+        (0.04% of capital, doubled for a co-borrower) that was previously missing
+        from every simulation's cost breakdown.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters
+                ADD COLUMN adi_monthly_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0004;
+      rollback:
+        - sql:
+            sql: ALTER TABLE bam_parameters DROP COLUMN adi_monthly_rate;
+
+  - changeSet:
+      id: "017-bam-parameters-version"
+      author: bladi
+      comment: >
+        Optimistic locking column so two concurrent admin PATCH requests on this
+        bank-wide config row fail loudly on conflict instead of silently clobbering
+        each other (last-write-wins).
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters
+                ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+      rollback:
+        - sql:
+            sql: ALTER TABLE bam_parameters DROP COLUMN version;
+
+  - changeSet:
+      id: "018-audit-log-indexes"
+      author: bladi
+      comment: >
+        audit_log had no supporting indexes beyond its primary key, and no query surface
+        existed to read it — as the table grows, any compliance/reporting lookup by actor,
+        action or date range would be a full table scan.
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_audit_log_username_performed_at
+              ON audit_log (username, performed_at);
+              CREATE INDEX IF NOT EXISTS idx_audit_log_action_performed_at
+              ON audit_log (action, performed_at);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_audit_log_username_performed_at;
+              DROP INDEX IF EXISTS idx_audit_log_action_performed_at;
+
+  - changeSet:
+      id: "019-refresh-token-hash"
+      author: bladi
+      comment: >
+        Refresh tokens were stored in plaintext — a DB leak alone would hand out
+        directly usable, unexpired session tokens. Replace the plaintext token column
+        with a SHA-256 hash column; lookups compare hashes, never raw tokens.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE refresh_token ADD COLUMN token_hash VARCHAR(64);
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_refresh_token_hash ON refresh_token (token_hash);
+              ALTER TABLE refresh_token DROP COLUMN token;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE refresh_token ADD COLUMN token VARCHAR(128);
+              ALTER TABLE refresh_token DROP COLUMN token_hash;
+
+  - changeSet:
+      id: "020-revoked-token-hash"
+      author: bladi
+      comment: >
+        Revoked (blacklisted) access tokens were stored as the raw JWT — a DB leak would hand
+        out valid, decodable JWTs (username/role in the payload) even though they're revoked,
+        inconsistent with refresh tokens which were already hashed for the same reason (see
+        019-refresh-token-hash). Replace the raw token column with a SHA-256 hash column.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE revoked_token ADD COLUMN token_hash VARCHAR(64);
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_revoked_token_hash ON revoked_token (token_hash);
+              ALTER TABLE revoked_token DROP COLUMN token;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE revoked_token ADD COLUMN token VARCHAR(2048);
+              ALTER TABLE revoked_token DROP COLUMN token_hash;
+
+  - changeSet:
+      id: "021-bam-parameters-generalize-max-age"
+      author: bladi
+      comment: >
+        The age-at-maturity BAM rule now applies to every CSP profile, not just retirees (RETR)
+        — a borrower's income capacity is not guaranteed past the same age regardless of current
+        employment status. Renaming the column so its name no longer implies a RETR-only scope.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters RENAME COLUMN max_age_at_maturity_retr TO max_age_at_maturity;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE bam_parameters RENAME COLUMN max_age_at_maturity TO max_age_at_maturity_retr;
+
+  - changeSet:
+      id: "022-audit-log-performed-at-index"
+      author: bladi
+      comment: >
+        AuditLogRepository.findAll paginates the ENTIRE table ordered by performed_at with no
+        username/action filter (it backs the admin "browse all audit events" screen) — the
+        composite indexes added in 018 (username, performed_at) and (action, performed_at) do not
+        help an unfiltered global sort, since performed_at isn't the leading column of either.
+        A plain index on performed_at covers this actual query pattern.
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_audit_log_performed_at ON audit_log (performed_at);
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_audit_log_performed_at;
+
+  - changeSet:
+      id: "023-refresh-revoked-token-indexes"
+      author: bladi
+      comment: >
+        010-refresh-token-fk-user added a FOREIGN KEY on refresh_token.user_id but, unlike MySQL/H2,
+        Postgres does not auto-index FK columns — RefreshTokenDatasource.revokeAllByUserId (WHERE
+        user_id = ? AND revoked = false) and the periodic cleanup job's deleteExpiredTokens (WHERE
+        expires_at < ?) on both refresh_token and revoked_token had no supporting index, degrading
+        to full-table scans as these tables grow.
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_refresh_token_user_revoked ON refresh_token (user_id, revoked);
+              CREATE INDEX IF NOT EXISTS idx_refresh_token_expires_at ON refresh_token (expires_at);
+              CREATE INDEX IF NOT EXISTS idx_revoked_token_expires_at ON revoked_token (expires_at);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_refresh_token_user_revoked;
+              DROP INDEX IF EXISTS idx_refresh_token_expires_at;
+              DROP INDEX IF EXISTS idx_revoked_token_expires_at;
+
+  - changeSet:
+      id: "024-credit-rate-version"
+      author: bladi
+      comment: >
+        Optimistic locking column so two concurrent admin PATCH requests on the same
+        credit_rate row fail loudly on conflict instead of silently clobbering each other
+        (last-write-wins). Mirrors 017-bam-parameters-version.
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE credit_rate
+                ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+      rollback:
+        - sql:
+            sql: ALTER TABLE credit_rate DROP COLUMN version;
+
+  - changeSet:
+      id: "025-create-mourabaha-parameters"
+      author: bladi
+      comment: >
+        Mourabaha Immobilier (participative financing) pricing config: a profit rate (Taux
+        HT) and a VAT rate applied to the profit margin, instead of an interest rate — mirrors
+        bam_parameters as a single admin-configurable "active" row (see changeset 015 for the
+        same active-row-uniqueness technique).
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE IF NOT EXISTS mourabaha_parameters (
+                id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+                profit_rate DECIMAL(5,2) NOT NULL,
+                vat_rate    DECIMAL(6,4) NOT NULL,
+                active      BOOLEAN DEFAULT TRUE,
+                version     BIGINT NOT NULL DEFAULT 0
+              );
+              ALTER TABLE mourabaha_parameters
+                ADD COLUMN active_marker INT
+                GENERATED ALWAYS AS (CASE WHEN active THEN 1 ELSE NULL END);
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_mourabaha_parameters_unique_active
+              ON mourabaha_parameters (active_marker);
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS mourabaha_parameters;
+
+  - changeSet:
+      id: "026-insert-mourabaha-parameters"
+      author: bladi
+      comment: >
+        Seed rate matches Bank Al Yousr's real "Mourabaha Immobilier" simulation screen:
+        Taux HT 5.25%, TVA 10% (verified to reproduce the exact Marge HT/TTC and échéance
+        TTC from that screen — see MourabahaCalculationEngineTest).
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO mourabaha_parameters (id, profit_rate, vat_rate, active) VALUES
+              (1, 5.25, 0.10, true)
