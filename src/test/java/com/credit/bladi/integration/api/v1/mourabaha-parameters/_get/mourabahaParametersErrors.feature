@@ -1,4 +1,4 @@
-Feature: GET /api/v1/mourabaha-parameters — error cases
+Feature: GET /api/v1/mourabaha-parameters: error cases
 
   Background:
     * url baseUrl

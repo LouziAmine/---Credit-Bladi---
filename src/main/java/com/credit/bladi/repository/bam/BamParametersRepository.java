@@ -10,6 +10,7 @@ import com.credit.bladi.exception.BamParametersException;
 import com.credit.bladi.model.bam.BamParametersModel;
 import com.credit.bladi.model.bam.BamParametersPatchResult;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.cache.annotation.CacheEvict;
@@ -18,11 +19,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class BamParametersRepository implements IBamParametersRepository {
-
     private static final Logger LOGGER = LogManager.getLogger(BamParametersRepository.class);
 
     private final BamParametersDatasource datasource;
@@ -45,13 +44,18 @@ public class BamParametersRepository implements IBamParametersRepository {
     }
 
     @Override
+    public Optional<Long> findIdByPublicId(UUID publicId) {
+        return datasource.findByPublicId(publicId).map(BamParametersEntity::getId);
+    }
+
+    @Override
     @Cacheable(value = "bamParameters", unless = "#result == null")
     public Optional<BamParametersModel> getActiveParameters() {
         LOGGER.debug("getActiveParameters");
         long activeCount = datasource.countByActiveTrue();
         if (activeCount > 1) {
             LOGGER.warn("getActiveParameters - {} active bam_parameters rows found, expected at most 1 "
-                + "— using the most recent one", activeCount);
+                + ",  using the most recent one", activeCount);
         }
         Optional<BamParametersModel> result = datasource.findActiveParameters()
                 .map(BamParametersEntityMapper::mapFromEntity);
@@ -63,7 +67,6 @@ public class BamParametersRepository implements IBamParametersRepository {
     }
 
     @Override
-    @Transactional
     @CacheEvict(value = "bamParameters", allEntries = true)
     public BamParametersPatchResult patchParameters(BamParametersModel bamParametersPatch) {
         BamParametersEntity entity = datasource.findById(bamParametersPatch.getId())

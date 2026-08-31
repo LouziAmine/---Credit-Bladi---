@@ -1,5 +1,12 @@
 package com.credit.bladi.unittest.service.bamparameters;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_1000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_10000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_003;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_005;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_01;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_015;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_14_00;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
@@ -9,13 +16,14 @@ import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.exception.BamParametersException;
 import com.credit.bladi.model.bam.BamParametersModel;
 import com.credit.bladi.model.bam.BamParametersPatchResult;
+import com.credit.bladi.model.parameters.RegulatoryLimits;
 import com.credit.bladi.model.vo.Money;
+import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.model.vo.Ratio;
 import com.credit.bladi.repository.bam.IBamParametersRepository;
 import com.credit.bladi.service.audit.IAuditService;
 import com.credit.bladi.service.bamparameters.BamParametersService;
 import com.credit.bladi.service.security.ICurrentActorProvider;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BamParametersServiceTest {
-
     @Mock
     private IBamParametersRepository repository;
 
@@ -40,19 +47,20 @@ class BamParametersServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BamParametersService(repository, auditService, currentActorProvider);
+        service = new BamParametersService(repository, auditService, currentActorProvider,
+            new RegulatoryLimits(Rate.of(DECIMAL_14_00)));
     }
 
     @Test
     void shouldDelegateToRepositoryAndReturnPagedResult() {
         BamParametersModel model = BamParametersModel.getBuilder()
             .id(1L)
-            .processingFeesRatio(Ratio.of(new BigDecimal("0.01")))
-            .minProcessingFees(Money.of(new BigDecimal("1000")))
-            .maxProcessingFees(Money.of(new BigDecimal("10000")))
-            .registrationFeeRatio(Ratio.of(new BigDecimal("0.01")))
-            .landConservationRatio(Ratio.of(new BigDecimal("0.015")))
-            .notaryFeeRatio(Ratio.of(new BigDecimal("0.01")))
+            .processingFeesRatio(Ratio.of(DECIMAL_0_01))
+            .minProcessingFees(Money.of(AMOUNT_1000))
+            .maxProcessingFees(Money.of(AMOUNT_10000))
+            .registrationFeeRatio(Ratio.of(DECIMAL_0_01))
+            .landConservationRatio(Ratio.of(DECIMAL_0_015))
+            .notaryFeeRatio(Ratio.of(DECIMAL_0_01))
             .active(true)
             .build();
         CreditPage<BamParametersModel> page = new CreditPage<>();
@@ -90,15 +98,15 @@ class BamParametersServiceTest {
     void shouldDelegatePatchParametersToRepository() {
         BamParametersModel patch = BamParametersModel.getBuilder()
             .id(1L)
-            .processingFeesRatio(Ratio.of(new BigDecimal("0.005")))
+            .processingFeesRatio(Ratio.of(DECIMAL_0_005))
             .build();
         BamParametersModel before = BamParametersModel.getBuilder()
             .id(1L)
-            .processingFeesRatio(Ratio.of(new BigDecimal("0.003")))
+            .processingFeesRatio(Ratio.of(DECIMAL_0_003))
             .build();
         BamParametersModel after = BamParametersModel.getBuilder()
             .id(1L)
-            .processingFeesRatio(Ratio.of(new BigDecimal("0.005")))
+            .processingFeesRatio(Ratio.of(DECIMAL_0_005))
             .build();
         when(repository.patchParameters(patch)).thenReturn(new BamParametersPatchResult(before, after));
 

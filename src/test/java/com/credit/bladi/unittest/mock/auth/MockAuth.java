@@ -1,32 +1,31 @@
 package com.credit.bladi.unittest.mock.auth;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_CLIENT;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_ACCESS_TOKEN_XYZ;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_REFRESH_TOKEN_XYZ;
+import static com.credit.bladi.unittest.mock.data.MockUsers.PASSWORD_SECUREP_AT_SS1;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JOHN_DOE;
+
 import com.credit.bladi.controller.dto.auth.request.LoginRequestDTO;
 import com.credit.bladi.controller.dto.auth.request.RegisterRequestDTO;
 import com.credit.bladi.controller.dto.auth.response.AuthUserResponseDTO;
 import com.credit.bladi.model.auth.AuthLoginResult;
 
 public final class MockAuth {
-
-    public static final String USERNAME = "john.doe";
-    public static final String PASSWORD = "secureP@ss1";
-    public static final String ACCESS_TOKEN = "access-token-xyz";
-    public static final String REFRESH_TOKEN = "refresh-token-xyz";
-    public static final String ROLE = "CLIENT";
+    public static final String USERNAME = USER_JOHN_DOE;
+    public static final String PASSWORD = PASSWORD_SECUREP_AT_SS1;
+    public static final String ACCESS_TOKEN = TOKEN_ACCESS_TOKEN_XYZ;
+    public static final String REFRESH_TOKEN = TOKEN_REFRESH_TOKEN_XYZ;
+    public static final String ROLE = CODE_CLIENT;
 
     private MockAuth() {}
 
     public static LoginRequestDTO loginRequest() {
-        LoginRequestDTO dto = new LoginRequestDTO();
-        dto.setUsername(USERNAME);
-        dto.setPassword(PASSWORD);
-        return dto;
+        return new LoginRequestDTO(USERNAME, PASSWORD);
     }
 
     public static RegisterRequestDTO registerRequest() {
-        RegisterRequestDTO dto = new RegisterRequestDTO();
-        dto.setUsername(USERNAME);
-        dto.setPassword(PASSWORD);
-        return dto;
+        return new RegisterRequestDTO(USERNAME, PASSWORD);
     }
 
     public static AuthLoginResult loginResult() {

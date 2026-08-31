@@ -1,7 +1,6 @@
 package com.credit.bladi.validator;
 
 public final class ValidationConstraints {
-
     private ValidationConstraints() {
     }
 
@@ -12,6 +11,8 @@ public final class ValidationConstraints {
     public static final int DURATION_MAX = 300;
 
     public static final String CSP_CODE_REGEX = "^(RETR|SALA|FONC|PROF|INDE)$";
+
+    public static final String RATE_FORMULA_REGEX = "^(MIN|MAX|AVERAGE)$";
 
     public static final String PRODUCT_TYPE_REGEX = "^(CONVENTIONAL|MOURABAHA)$";
 
@@ -32,4 +33,19 @@ public final class ValidationConstraints {
     public static final int AGE_MIN = 18;
 
     public static final int AGE_MAX = 74;
+
+    public static final String ENTERPRISE_TYPE_REGEX = "^(TPE|AUTO_ENTREPRENEUR|PME|ETI|GE)$";
+
+    public static final String ENTERPRISE_AMOUNT_MIN = "50000";
+    public static final String ENTERPRISE_AMOUNT_MAX = "100000000";
+
+    public static final String ENTERPRISE_ANNUAL_AMOUNT_MIN = "0";
+    public static final String ENTERPRISE_ANNUAL_AMOUNT_MAX = "1000000000";
+
+    public static final int ENTERPRISE_COMPANY_AGE_MIN = 0;
+    public static final int ENTERPRISE_COMPANY_AGE_MAX = 150;
+
+    public static final String CLASSIFICATION_OUTCOME_REGEX = "^(REAL|FAKE|SIMULATION_ONLY)$";
+
+    public static final String ENTERPRISE_LINK_ROLE_REGEX = "^(RESPONSABLE|DELEGUE)$";
 }

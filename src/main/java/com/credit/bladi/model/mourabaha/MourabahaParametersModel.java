@@ -1,25 +1,40 @@
 package com.credit.bladi.model.mourabaha;
 
+import com.credit.bladi.model.parameters.VersionedParametersModel;
 import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.model.vo.Ratio;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.UUID;
 
-public class MourabahaParametersModel {
+public final class MourabahaParametersModel implements VersionedParametersModel<MourabahaParametersModel> {
+    private final Long id;
 
-    private Long id;
+    private final UUID publicId;
 
-    private Rate profitRate;
+    private final Rate profitRate;
 
-    private Ratio vatRate;
+    private final Ratio vatRate;
 
-    private Boolean active;
+    private final Rate takafulMonthlyRate;
 
-    private MourabahaParametersModel() {
+    private final Boolean active;
+
+    private MourabahaParametersModel(Builder builder) {
+        this.id = builder.id;
+        this.publicId = builder.publicId;
+        this.profitRate = builder.profitRate;
+        this.vatRate = builder.vatRate;
+        this.takafulMonthlyRate = builder.takafulMonthlyRate;
+        this.active = builder.active;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public UUID getPublicId() {
+        return publicId;
     }
 
     public Rate getProfitRate() {
@@ -30,24 +45,17 @@ public class MourabahaParametersModel {
         return vatRate;
     }
 
+    public Rate getTakafulMonthlyRate() {
+        return takafulMonthlyRate;
+    }
+
     public Boolean getActive() {
         return active;
     }
 
-    private void setId(Long id) {
-        this.id = id;
-    }
-
-    private void setProfitRate(Rate profitRate) {
-        this.profitRate = profitRate;
-    }
-
-    private void setVatRate(Ratio vatRate) {
-        this.vatRate = vatRate;
-    }
-
-    private void setActive(Boolean active) {
-        this.active = active;
+    public MourabahaParametersModel withProfitRate(Rate agreedProfitRate) {
+        return getBuilder().id(id).publicId(publicId).profitRate(agreedProfitRate).vatRate(vatRate)
+            .takafulMonthlyRate(takafulMonthlyRate).active(active).build();
     }
 
     public static Builder getBuilder() {
@@ -55,17 +63,25 @@ public class MourabahaParametersModel {
     }
 
     public static class Builder {
-
         private Long id;
+
+        private UUID publicId;
 
         private Rate profitRate;
 
         private Ratio vatRate;
 
+        private Rate takafulMonthlyRate;
+
         private Boolean active;
 
         public Builder id(Long id) {
             this.id = id;
+            return this;
+        }
+
+        public Builder publicId(UUID publicId) {
+            this.publicId = publicId;
             return this;
         }
 
@@ -79,18 +95,18 @@ public class MourabahaParametersModel {
             return this;
         }
 
+        public Builder takafulMonthlyRate(Rate takafulMonthlyRate) {
+            this.takafulMonthlyRate = takafulMonthlyRate;
+            return this;
+        }
+
         public Builder active(Boolean active) {
             this.active = active;
             return this;
         }
 
         public MourabahaParametersModel build() {
-            MourabahaParametersModel model = new MourabahaParametersModel();
-            model.setId(id);
-            model.setProfitRate(profitRate);
-            model.setVatRate(vatRate);
-            model.setActive(active);
-            return model;
+            return new MourabahaParametersModel(this);
         }
     }
 
@@ -98,24 +114,15 @@ public class MourabahaParametersModel {
         StringJoiner changes = new StringJoiner(", ");
         appendIfChanged(changes, "profitRate", before.profitRate, profitRate);
         appendIfChanged(changes, "vatRate", before.vatRate, vatRate);
+        appendIfChanged(changes, "takafulMonthlyRate", before.takafulMonthlyRate, takafulMonthlyRate);
         appendIfChanged(changes, "active", before.active, active);
         return changes.toString();
     }
 
     private static void appendIfChanged(StringJoiner changes, String field, Object before, Object after) {
-        if (!valuesEqual(before, after)) {
+        if (!Objects.equals(before, after)) {
             changes.add(field + ": " + before + " -> " + after);
         }
-    }
-
-    private static boolean valuesEqual(Object before, Object after) {
-        if (before instanceof Rate beforeRate && after instanceof Rate afterRate) {
-            return beforeRate.equalsValue(afterRate);
-        }
-        if (before instanceof Ratio beforeRatio && after instanceof Ratio afterRatio) {
-            return beforeRatio.equalsValue(afterRatio);
-        }
-        return Objects.equals(before, after);
     }
 
     @Override
@@ -137,7 +144,7 @@ public class MourabahaParametersModel {
     @Override
     public String toString() {
         return String.format(
-            "MourabahaParametersModel [id=%s, profitRate=%s, vatRate=%s, active=%s]",
-            id, profitRate, vatRate, active);
+            "MourabahaParametersModel [id=%s, profitRate=%s, vatRate=%s, takafulMonthlyRate=%s, active=%s]",
+            id, profitRate, vatRate, takafulMonthlyRate, active);
     }
 }

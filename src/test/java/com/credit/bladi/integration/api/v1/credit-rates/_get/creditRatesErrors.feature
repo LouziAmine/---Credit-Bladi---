@@ -1,4 +1,4 @@
-Feature: GET /api/v1/credit-rates — error cases
+Feature: GET /api/v1/credit-rates: error cases
 
   Background:
     * url baseUrl

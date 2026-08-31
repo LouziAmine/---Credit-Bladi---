@@ -1,5 +1,6 @@
 package com.credit.bladi.config.swagger;
 
+import com.credit.bladi.config.security.RateLimitFilter;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +24,6 @@ import org.springframework.web.method.HandlerMethod;
 
 @Configuration
 public class SwaggerConfig {
-
     public static final String SECURITY_SCHEME_NAME = "Bearer_Authentication";
 
     private final String title;
@@ -94,18 +93,10 @@ public class SwaggerConfig {
                                         .bearerFormat("JWT")));
     }
 
-    private static final Set<String> RATE_LIMITED_METHODS = Set.of(
-        "com.credit.bladi.controller.auth.AuthController#register",
-        "com.credit.bladi.controller.auth.AuthController#login",
-        "com.credit.bladi.controller.auth.AuthController#refresh",
-        "com.credit.bladi.controller.auth.AuthController#logout",
-        "com.credit.bladi.controller.simulation.SimulationController#simulate"
-    );
-
     private OperationCustomizer customizer() {
         return (operation, handlerMethod) -> {
             if (Objects.nonNull(operation.getParameters())) {
-                operation.getParameters().removeIf(p -> "Authorization".equals(p.getName()));
+                operation.getParameters().removeIf(parameter -> "Authorization".equals(parameter.getName()));
             }
             addRateLimitAndPayloadResponses(operation, handlerMethod);
             return operation;
@@ -120,7 +111,7 @@ public class SwaggerConfig {
         addResponseIfAbsent(operation, "406", "None of the available representations matches the Accept header.");
 
         String key = beanType.getName() + "#" + handlerMethod.getMethod().getName();
-        if (RATE_LIMITED_METHODS.contains(key)) {
+        if (RateLimitFilter.RATE_LIMITED_OPERATIONS.contains(key)) {
             addResponseIfAbsent(operation, "429", "Too many requests. Please try again in 1 minute.");
         }
         boolean hasBody = handlerMethod.getMethodAnnotation(PostMapping.class) != null

@@ -3,9 +3,7 @@ package com.credit.bladi.config.web;
 import jakarta.servlet.http.HttpServletRequest;
 
 public final class ClientIpResolver {
-
     private ClientIpResolver() {}
-
 
     public static String resolve(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();

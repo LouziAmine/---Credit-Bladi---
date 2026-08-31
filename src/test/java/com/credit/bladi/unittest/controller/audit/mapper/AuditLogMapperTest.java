@@ -1,5 +1,9 @@
 package com.credit.bladi.unittest.controller.audit.mapper;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_LOGIN;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SUCCESS;
+import static com.credit.bladi.unittest.mock.data.MockContacts.IP_10_0_0_1;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -14,15 +18,14 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AuditLogMapperTest {
-
     @Test
     void shouldMapCreditPageOfModelsToCreditPageOfDtos() {
         AuditLogModel model = AuditLogModel.getBuilder()
             .id(1L)
-            .username("jdoe")
+            .username(USER_JDOE)
             .action(AuditAction.LOGIN)
-            .ipAddress("10.0.0.1")
-            .details("SUCCESS")
+            .ipAddress(IP_10_0_0_1)
+            .details(CODE_SUCCESS)
             .performedAt(LocalDateTime.now())
             .build();
         CreditPage<AuditLogModel> source = new CreditPage<>();
@@ -35,19 +38,19 @@ class AuditLogMapperTest {
         CreditPage<AuditLogResponseDTO> result = AuditLogMapper.toCreditPage(source);
 
         assertEquals(1, result.getItems().size());
-        assertEquals("jdoe", result.getItems().get(0).getUsername());
-        assertEquals("LOGIN", result.getItems().get(0).getAction());
+        assertEquals(USER_JDOE, result.getItems().get(0).username());
+        assertEquals(CODE_LOGIN, result.getItems().get(0).action());
     }
 
     @Test
     void shouldMapModelWithNullActionToDtoWithNullAction() {
-        AuditLogModel model = AuditLogModel.getBuilder().id(1L).username("jdoe").build();
+        AuditLogModel model = AuditLogModel.getBuilder().id(1L).username(USER_JDOE).build();
         CreditPage<AuditLogModel> source = new CreditPage<>();
         source.setItems(List.of(model));
 
         CreditPage<AuditLogResponseDTO> result = AuditLogMapper.toCreditPage(source);
 
-        assertNull(result.getItems().get(0).getAction());
+        assertNull(result.getItems().get(0).action());
     }
 
     @Test

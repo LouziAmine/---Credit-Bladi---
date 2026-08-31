@@ -1,7 +1,6 @@
 package com.credit.bladi.perf.utils;
 
 public final class UniqueUsernames {
-
     private static final long RUN_ID = System.currentTimeMillis();
 
     private UniqueUsernames() {

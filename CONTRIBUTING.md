@@ -10,8 +10,8 @@ This project and everyone participating in it is governed by the
 
 ## Getting set up
 
-Follow the [Getting Started](README.md#getting-started) section of the README to install
-prerequisites, configure environment variables, and run the application locally.
+Follow the [Quick Start](README.md#quick-start) of the README to install the prerequisites and run the
+application locally.
 
 ## Workflow
 
@@ -32,11 +32,11 @@ Run these from the repository root; `./run-tests.sh` wraps all of them in an int
 # Code style: must pass with zero violations
 ./mvnw checkstyle:check
 
-# Unit + integration tests
-./mvnw test
+# Unit tests (H2, no Docker needed)
+./mvnw test -Dtest='!IntegrationTest'
 
-# Karate BDD integration tests (starts the app automatically)
-# select option 2 in ./run-tests.sh, or see docs/testing.md
+# Karate integration tests (H2, needs a free port 8080 or -Dserver.port=...)
+./mvnw test -Dtest=IntegrationTest
 ```
 
 A pull request that fails Checkstyle or the test suite will not be merged until it's fixed.
@@ -45,13 +45,21 @@ A pull request that fails Checkstyle or the test suite will not be merged until 
 
 - Java code follows **Google Java Style**, enforced by Checkstyle (`checkstyle.xml`); run
   `./mvnw checkstyle:check` to verify before pushing.
-- Keep the layered architecture documented in [Architecture](docs/architecture.md#architecture):
-  dependencies point strictly inward (`controller → service → repository → datasource`). Don't add
-  imports that violate that direction.
+- Keep the layered architecture documented in [Architecture](docs/architecture.md#layers-and-dependency-rule):
+  `model/` imports no framework; `service/` never imports `infrastructure/`, `datasource/` or
+  `controller/` (external systems go behind a port in `service/`, implemented in `infrastructure/`);
+  controllers never touch repositories.
 - New business rules belong on the domain model (`model/`) as validating constructors/builders or
   methods, not re-implemented against raw getters/setters in a service, see
   [Domain-Driven Design](docs/architecture.md#domain-driven-design).
-- All code, comments, and commit messages must be in English.
+- No comments in the source code (`src/main` and `src/test`): names carry the meaning, and the business
+  rationale (loi 31-08, TMIC, four-eyes...) lives in `docs/`. Configuration files (`.properties`, YAML, Docker,
+  CI) may explain their settings. Commit messages are in English.
+- No literal business values in tests: they come from `src/test/java/com/credit/bladi/unittest/mock/data/`.
+- Log messages are in English. Every message a client or manager can read (API error `description`,
+  notifications, emails, SMS) goes through an i18n key with its `.properties` / `_fr` / `_en` / `_ar` files, 
+  never a hard-coded sentence. API responses follow the request's `Accept-Language`; notifications follow the
+  recipient's stored language (French when unknown).
 
 ## Commit messages
 
@@ -68,5 +76,4 @@ Open a GitHub issue with:
 
 ## Questions
 
-If anything in this guide is unclear, open an issue or reach out, see
-[README > Contact](README.md#contact).
+If anything here is unclear, open an issue or write to the contact in the [README](README.md#license).

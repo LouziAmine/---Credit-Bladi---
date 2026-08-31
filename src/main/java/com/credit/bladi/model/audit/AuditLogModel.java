@@ -2,26 +2,42 @@ package com.credit.bladi.model.audit;
 
 import com.credit.bladi.model.enums.AuditAction;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-public class AuditLogModel {
+public final class AuditLogModel {
+    private final Long id;
 
-    private Long id;
+    private final UUID publicId;
 
-    private String username;
+    private final String username;
 
-    private AuditAction action;
+    private final AuditAction action;
 
-    private String ipAddress;
+    private final String ipAddress;
 
-    private String details;
+    private final String details;
 
-    private LocalDateTime performedAt;
+    private final LocalDateTime performedAt;
 
-    private AuditLogModel() {
+    private final AuditTarget target;
+
+    private AuditLogModel(Builder builder) {
+        this.id = builder.id;
+        this.publicId = builder.publicId;
+        this.username = builder.username;
+        this.action = builder.action;
+        this.ipAddress = builder.ipAddress;
+        this.details = builder.details;
+        this.performedAt = builder.performedAt;
+        this.target = builder.target;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public UUID getPublicId() {
+        return publicId;
     }
 
     public String getUsername() {
@@ -44,28 +60,8 @@ public class AuditLogModel {
         return performedAt;
     }
 
-    private void setId(Long id) {
-        this.id = id;
-    }
-
-    private void setUsername(String username) {
-        this.username = username;
-    }
-
-    private void setAction(AuditAction action) {
-        this.action = action;
-    }
-
-    private void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
-    private void setDetails(String details) {
-        this.details = details;
-    }
-
-    private void setPerformedAt(LocalDateTime performedAt) {
-        this.performedAt = performedAt;
+    public AuditTarget getTarget() {
+        return target;
     }
 
     public static Builder getBuilder() {
@@ -73,8 +69,9 @@ public class AuditLogModel {
     }
 
     public static final class Builder {
-
         private Long id;
+
+        private UUID publicId;
 
         private String username;
 
@@ -86,11 +83,18 @@ public class AuditLogModel {
 
         private LocalDateTime performedAt;
 
+        private AuditTarget target;
+
         private Builder() {
         }
 
         public Builder id(Long id) {
             this.id = id;
+            return this;
+        }
+
+        public Builder publicId(UUID publicId) {
+            this.publicId = publicId;
             return this;
         }
 
@@ -119,15 +123,13 @@ public class AuditLogModel {
             return this;
         }
 
+        public Builder target(AuditTarget target) {
+            this.target = target;
+            return this;
+        }
+
         public AuditLogModel build() {
-            AuditLogModel model = new AuditLogModel();
-            model.setId(id);
-            model.setUsername(username);
-            model.setAction(action);
-            model.setIpAddress(ipAddress);
-            model.setDetails(details);
-            model.setPerformedAt(performedAt);
-            return model;
+            return new AuditLogModel(this);
         }
     }
 

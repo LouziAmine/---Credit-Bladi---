@@ -8,7 +8,6 @@ import static com.credit.bladi.unittest.mock.bam.MockBamParameters.REGISTRATION_
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.bamParametersEntity;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.bamParametersModel;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.credit.bladi.common.CreditPage;
@@ -21,12 +20,11 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.junit.jupiter.api.Test;
 
 class BamParametersEntityMapperTest {
-
     @Test
     void shouldMapEntityToModel() {
         BamParametersModel model = BamParametersEntityMapper.mapFromEntity(bamParametersEntity());
 
-        assertTrue(EqualsBuilder.reflectionEquals(bamParametersModel(), model));
+        assertTrue(EqualsBuilder.reflectionEquals(bamParametersModel(), model, "publicId"));
     }
 
     @Test
@@ -54,17 +52,6 @@ class BamParametersEntityMapperTest {
             BamParametersEntityMapper.mapToPage(List.of(bamParametersEntity()), 10L, 1, 0);
 
         assertEquals(0, page.getLastPage());
-    }
-
-    @Test
-    void shouldReturnNullFromToRatioWhenValueIsNullViaReflection() throws Exception {
-        java.lang.reflect.Method method = BamParametersEntityMapper.class.getDeclaredMethod(
-            "toRatio", java.math.BigDecimal.class);
-        method.setAccessible(true);
-
-        Object result = method.invoke(null, (Object) null);
-
-        assertNull(result);
     }
 
     @Test

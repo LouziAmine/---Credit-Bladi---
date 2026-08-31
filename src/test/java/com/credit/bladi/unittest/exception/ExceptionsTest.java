@@ -1,5 +1,10 @@
 package com.credit.bladi.unittest.exception;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_9;
+import static com.credit.bladi.unittest.mock.data.MockDates.DATE_2026_01_01;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CB_400;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_UNKNOWN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,17 +21,15 @@ import com.credit.bladi.exception.BamParametersException.BamParametersExceptionT
 import com.credit.bladi.exception.CreditRateException;
 import com.credit.bladi.exception.CreditRateException.CreditRateExceptionType;
 import com.credit.bladi.exception.ErrorResponse;
+import com.credit.bladi.exception.MortgageCreditException;
+import com.credit.bladi.exception.MortgageCreditException.MortgageCreditExceptionType;
 import com.credit.bladi.exception.MourabahaParametersException;
 import com.credit.bladi.exception.MourabahaParametersException.MourabahaParametersExceptionType;
-import com.credit.bladi.exception.SimulationException;
-import com.credit.bladi.exception.SimulationException.SimulationExceptionType;
 import com.credit.bladi.exception.ValidationException;
 import com.credit.bladi.exception.ValidationException.ValidationExceptionType;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class ExceptionsTest {
-
     @Test
     void shouldCreateAuthExceptionInvalidCredentials() {
         AuthException ex = AuthException.of(AuthExceptionType.INVALID_CREDENTIALS);
@@ -79,42 +82,43 @@ class ExceptionsTest {
     @Test
     void shouldRejectDurationLimitExceededWithRatioOverload() {
         assertThrows(IllegalArgumentException.class,
-            () -> BAMException.of(BAMExceptionType.DURATION_LIMIT_EXCEEDED, BigDecimal.valueOf(0.90)));
+            () -> BAMException.of(BAMExceptionType.DURATION_LIMIT_EXCEEDED, DECIMAL_0_9));
     }
 
     @Test
     void shouldRejectAgeLimitExceededWithRatioOverload() {
         assertThrows(IllegalArgumentException.class,
-            () -> BAMException.of(BAMExceptionType.AGE_LIMIT_EXCEEDED, BigDecimal.valueOf(0.90)));
+            () -> BAMException.of(BAMExceptionType.AGE_LIMIT_EXCEEDED, DECIMAL_0_9));
     }
 
     @Test
     void shouldCreateSimulationExceptionCspNotFound() {
-        SimulationException ex = SimulationException.of(SimulationExceptionType.CSP_NOT_FOUND);
-        assertEquals(SimulationExceptionType.CSP_NOT_FOUND, ex.getType());
+        MortgageCreditException ex = MortgageCreditException.of(MortgageCreditExceptionType.CSP_NOT_FOUND);
+        assertEquals(MortgageCreditExceptionType.CSP_NOT_FOUND, ex.getType());
         assertEquals(ApiStatus.NOT_FOUND, ex.getStatusCode());
     }
 
     @Test
     void shouldCreateSimulationExceptionStrategyNotFound() {
-        SimulationException ex = SimulationException.of(SimulationExceptionType.STRATEGY_NOT_FOUND);
-        assertEquals(SimulationExceptionType.STRATEGY_NOT_FOUND, ex.getType());
+        MortgageCreditException ex = MortgageCreditException.of(MortgageCreditExceptionType.STRATEGY_NOT_FOUND);
+        assertEquals(MortgageCreditExceptionType.STRATEGY_NOT_FOUND, ex.getType());
         assertEquals(ApiStatus.INTERNAL_SERVER_ERROR, ex.getStatusCode());
         assertNotNull(ex.getMessage());
     }
 
     @Test
     void shouldCreateSimulationExceptionBamParametersNotFound() {
-        SimulationException ex = SimulationException.of(SimulationExceptionType.BAM_PARAMETERS_NOT_FOUND);
-        assertEquals(SimulationExceptionType.BAM_PARAMETERS_NOT_FOUND, ex.getType());
+        MortgageCreditException ex = MortgageCreditException.of(MortgageCreditExceptionType.BAM_PARAMETERS_NOT_FOUND);
+        assertEquals(MortgageCreditExceptionType.BAM_PARAMETERS_NOT_FOUND, ex.getType());
         assertEquals(ApiStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
         assertNotNull(ex.getMessage());
     }
 
     @Test
     void shouldCreateSimulationExceptionMourabahaParametersNotFound() {
-        SimulationException ex = SimulationException.of(SimulationExceptionType.MOURABAHA_PARAMETERS_NOT_FOUND);
-        assertEquals(SimulationExceptionType.MOURABAHA_PARAMETERS_NOT_FOUND, ex.getType());
+        MortgageCreditException ex = MortgageCreditException
+            .of(MortgageCreditExceptionType.MOURABAHA_PARAMETERS_NOT_FOUND);
+        assertEquals(MortgageCreditExceptionType.MOURABAHA_PARAMETERS_NOT_FOUND, ex.getType());
         assertEquals(ApiStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
         assertNotNull(ex.getMessage());
     }
@@ -131,7 +135,7 @@ class ExceptionsTest {
         BamParametersException ex = BamParametersException.of(BamParametersExceptionType.INVALID_PROCESSING_FEES_RANGE);
         assertEquals(BamParametersExceptionType.INVALID_PROCESSING_FEES_RANGE, ex.getType());
         assertEquals(ApiStatus.BAD_REQUEST, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("minProcessingFees"));
+        assertEquals("bamParameters.invalidProcessingFeesRange", ex.getMessageKey());
     }
 
     @Test
@@ -205,14 +209,14 @@ class ExceptionsTest {
     void shouldCreateAuthExceptionNoGrantedAuthorityWithoutDetail() {
         AuthException ex = AuthException.of(AuthExceptionType.NO_GRANTED_AUTHORITY);
         assertEquals(ApiStatus.INTERNAL_SERVER_ERROR, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("unknown"));
+        assertTrue(ex.getMessage().contains(USER_UNKNOWN));
     }
 
     @Test
     void shouldCreateAuthExceptionNoGrantedAuthorityWithDetail() {
-        AuthException ex = AuthException.of(AuthExceptionType.NO_GRANTED_AUTHORITY, "jdoe");
+        AuthException ex = AuthException.of(AuthExceptionType.NO_GRANTED_AUTHORITY, USER_JDOE);
         assertEquals(ApiStatus.INTERNAL_SERVER_ERROR, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("jdoe"));
+        assertTrue(ex.getMessage().contains(USER_JDOE));
     }
 
     @Test
@@ -220,7 +224,7 @@ class ExceptionsTest {
         ValidationException ex = ValidationException.of(ValidationExceptionType.BATCH_NOT_ALLOWED);
         assertEquals(ValidationExceptionType.BATCH_NOT_ALLOWED, ex.getType());
         assertEquals(ApiStatus.BAD_REQUEST, ex.getStatusCode());
-        assertTrue(ex.getMessage().contains("BATCH_NOT_ALLOWED"));
+        assertEquals("validation.batchNotAllowed", ex.getMessageKey());
     }
 
     @Test
@@ -239,7 +243,7 @@ class ExceptionsTest {
     @Test
     void shouldCreateValidationExceptionInvalidValueWithoutDetail() {
         ValidationException ex = ValidationException.of(ValidationExceptionType.INVALID_VALUE, null);
-        assertTrue(ex.getMessage().contains("unsupported value"));
+        assertEquals("validation.invalidValue", ex.getMessageKey());
     }
 
     @Test
@@ -250,40 +254,33 @@ class ExceptionsTest {
     }
 
     @Test
-    void shouldCreateValidationExceptionInvalidPage() {
-        ValidationException ex = ValidationException.of(ValidationExceptionType.INVALID_PAGE);
-        assertEquals(ValidationExceptionType.INVALID_PAGE, ex.getType());
-        assertTrue(ex.getMessage().contains("INVALID_PAGE"));
-    }
-
-    @Test
-    void shouldCreateValidationExceptionInvalidSize() {
-        ValidationException ex = ValidationException.of(ValidationExceptionType.INVALID_SIZE);
-        assertEquals(ValidationExceptionType.INVALID_SIZE, ex.getType());
-        assertTrue(ex.getMessage().contains("INVALID_SIZE"));
+    void shouldCreateValidationExceptionInvalidValue() {
+        ValidationException ex = ValidationException.of(ValidationExceptionType.INVALID_VALUE, "page");
+        assertEquals(ValidationExceptionType.INVALID_VALUE, ex.getType());
+        assertEquals(ApiStatus.BAD_REQUEST, ex.getStatusCode());
     }
 
     @Test
     void shouldCreateErrorResponse() {
-        ErrorResponse response = new ErrorResponse("req1", "2026-01-01 00:00:00", "CB-400", "error desc");
+        ErrorResponse response = new ErrorResponse("req1", "2026-01-01 00:00:00", LABEL_CB_400, "error desc");
         assertEquals("req1", response.requestId());
         assertEquals("2026-01-01 00:00:00", response.timestamp());
-        assertEquals("CB-400", response.errorCode());
+        assertEquals(LABEL_CB_400, response.errorCode());
         assertEquals("error desc", response.description());
     }
 
     @Test
     void shouldErrorResponseToStringIncludeAllFields() {
-        ErrorResponse response = new ErrorResponse("req1", "2026-01-01", "CB-400", "desc");
+        ErrorResponse response = new ErrorResponse("req1", DATE_2026_01_01, LABEL_CB_400, "desc");
         String str = response.toString();
         assertTrue(str.contains("req1"));
-        assertTrue(str.contains("CB-400"));
+        assertTrue(str.contains(LABEL_CB_400));
         assertTrue(str.contains("desc"));
     }
 
     @Test
     void shouldCreateApiException() {
-        ApiException ex = new ApiException(ApiStatus.BAD_GATEWAY);
-        assertEquals(ApiStatus.BAD_GATEWAY, ex.getStatusCode());
+        ApiException ex = new ApiException(ApiStatus.SERVICE_UNAVAILABLE, "test.dummy");
+        assertEquals(ApiStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
     }
 }

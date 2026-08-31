@@ -1,4 +1,4 @@
-Feature: POST /api/v1/auth/refresh — error cases
+Feature: POST /api/v1/auth/refresh: error cases
 
   Background:
     * url baseUrl

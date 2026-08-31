@@ -7,44 +7,65 @@ import static com.credit.bladi.exception.BamParametersException.BamParametersExc
 
 import com.credit.bladi.exception.BAMException;
 import com.credit.bladi.exception.BamParametersException;
+import com.credit.bladi.model.parameters.VersionedParametersModel;
 import com.credit.bladi.model.vo.Money;
 import com.credit.bladi.model.vo.Ratio;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.UUID;
 
-public class BamParametersModel {
+public final class BamParametersModel implements VersionedParametersModel<BamParametersModel> {
+    private final Long id;
 
-    private Long id;
+    private final UUID publicId;
 
-    private Ratio processingFeesRatio;
+    private final Ratio processingFeesRatio;
 
-    private Money minProcessingFees;
+    private final Money minProcessingFees;
 
-    private Money maxProcessingFees;
+    private final Money maxProcessingFees;
 
-    private Ratio registrationFeeRatio;
+    private final Ratio registrationFeeRatio;
 
-    private Ratio landConservationRatio;
+    private final Ratio landConservationRatio;
 
-    private Ratio notaryFeeRatio;
+    private final Ratio notaryFeeRatio;
 
-    private Ratio ltvRatio;
+    private final Ratio ltvRatio;
 
-    private Ratio maxDebtRatio;
+    private final Ratio maxDebtRatio;
 
-    private Integer maxAgeAtMaturity;
+    private final Integer maxAgeAtMaturity;
 
-    private Ratio adiMonthlyRate;
+    private final Ratio adiMonthlyRate;
 
-    private Boolean active;
+    private final Boolean active;
 
-    private BamParametersModel() {
+    private BamParametersModel(Builder builder) {
+        this.id = builder.id;
+        this.publicId = builder.publicId;
+        this.processingFeesRatio = builder.processingFeesRatio;
+        this.minProcessingFees = builder.minProcessingFees;
+        this.maxProcessingFees = builder.maxProcessingFees;
+        this.registrationFeeRatio = builder.registrationFeeRatio;
+        this.landConservationRatio = builder.landConservationRatio;
+        this.notaryFeeRatio = builder.notaryFeeRatio;
+        this.ltvRatio = builder.ltvRatio;
+        this.maxDebtRatio = builder.maxDebtRatio;
+        this.maxAgeAtMaturity = builder.maxAgeAtMaturity;
+        this.adiMonthlyRate = builder.adiMonthlyRate;
+        this.active = builder.active;
     }
 
+    @Override
     public Long getId() {
         return id;
+    }
+
+    public UUID getPublicId() {
+        return publicId;
     }
 
     public Ratio getProcessingFeesRatio() {
@@ -114,6 +135,7 @@ public class BamParametersModel {
         }
     }
 
+    @Override
     public String describeChangesFrom(BamParametersModel before) {
         StringJoiner changes = new StringJoiner(", ");
         appendIfChanged(changes, "processingFeesRatio", before.processingFeesRatio, processingFeesRatio);
@@ -131,70 +153,9 @@ public class BamParametersModel {
     }
 
     private static void appendIfChanged(StringJoiner changes, String field, Object before, Object after) {
-        if (!valuesEqual(before, after)) {
+        if (!Objects.equals(before, after)) {
             changes.add(field + ": " + before + " -> " + after);
         }
-    }
-
-    private static boolean valuesEqual(Object before, Object after) {
-        if (before instanceof BigDecimal beforeValue && after instanceof BigDecimal afterValue) {
-            return beforeValue.compareTo(afterValue) == 0;
-        }
-        if (before instanceof Money beforeMoney && after instanceof Money afterMoney) {
-            return beforeMoney.equalsValue(afterMoney);
-        }
-        if (before instanceof Ratio beforeRatio && after instanceof Ratio afterRatio) {
-            return beforeRatio.equalsValue(afterRatio);
-        }
-        return Objects.equals(before, after);
-    }
-
-    private void setId(Long id) {
-        this.id = id;
-    }
-
-    private void setProcessingFeesRatio(Ratio processingFeesRatio) {
-        this.processingFeesRatio = processingFeesRatio;
-    }
-
-    private void setMinProcessingFees(Money minProcessingFees) {
-        this.minProcessingFees = minProcessingFees;
-    }
-
-    private void setMaxProcessingFees(Money maxProcessingFees) {
-        this.maxProcessingFees = maxProcessingFees;
-    }
-
-    private void setRegistrationFeeRatio(Ratio registrationFeeRatio) {
-        this.registrationFeeRatio = registrationFeeRatio;
-    }
-
-    private void setLandConservationRatio(Ratio landConservationRatio) {
-        this.landConservationRatio = landConservationRatio;
-    }
-
-    private void setNotaryFeeRatio(Ratio notaryFeeRatio) {
-        this.notaryFeeRatio = notaryFeeRatio;
-    }
-
-    private void setLtvRatio(Ratio ltvRatio) {
-        this.ltvRatio = ltvRatio;
-    }
-
-    private void setMaxDebtRatio(Ratio maxDebtRatio) {
-        this.maxDebtRatio = maxDebtRatio;
-    }
-
-    private void setMaxAgeAtMaturity(Integer maxAgeAtMaturity) {
-        this.maxAgeAtMaturity = maxAgeAtMaturity;
-    }
-
-    private void setAdiMonthlyRate(Ratio adiMonthlyRate) {
-        this.adiMonthlyRate = adiMonthlyRate;
-    }
-
-    private void setActive(Boolean active) {
-        this.active = active;
     }
 
     public static Builder getBuilder() {
@@ -202,8 +163,9 @@ public class BamParametersModel {
     }
 
     public static class Builder {
-
         private Long id;
+
+        private UUID publicId;
 
         private Ratio processingFeesRatio;
 
@@ -229,6 +191,11 @@ public class BamParametersModel {
 
         public Builder id(Long id) {
             this.id = id;
+            return this;
+        }
+
+        public Builder publicId(UUID publicId) {
+            this.publicId = publicId;
             return this;
         }
 
@@ -298,20 +265,7 @@ public class BamParametersModel {
             validateAgeCeiling(maxAgeAtMaturity, 85);
             validateProcessingFeesRange(minProcessingFees, maxProcessingFees);
 
-            BamParametersModel model = new BamParametersModel();
-            model.setId(id);
-            model.setProcessingFeesRatio(processingFeesRatio);
-            model.setMinProcessingFees(minProcessingFees);
-            model.setMaxProcessingFees(maxProcessingFees);
-            model.setRegistrationFeeRatio(registrationFeeRatio);
-            model.setLandConservationRatio(landConservationRatio);
-            model.setNotaryFeeRatio(notaryFeeRatio);
-            model.setLtvRatio(ltvRatio);
-            model.setMaxDebtRatio(maxDebtRatio);
-            model.setMaxAgeAtMaturity(maxAgeAtMaturity);
-            model.setAdiMonthlyRate(adiMonthlyRate);
-            model.setActive(active);
-            return model;
+            return new BamParametersModel(this);
         }
 
         private static void validateRatio(String fieldName, Ratio value, BigDecimal max) {

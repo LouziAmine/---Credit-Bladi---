@@ -2,17 +2,13 @@ package com.credit.bladi.exception.handler;
 
 import com.credit.bladi.exception.ApiException;
 import com.credit.bladi.exception.ApiStatus;
-import com.credit.bladi.exception.AuthException;
-import com.credit.bladi.exception.BAMException;
-import com.credit.bladi.exception.BamParametersException;
-import com.credit.bladi.exception.CreditRateException;
 import com.credit.bladi.exception.ErrorResponse;
-import com.credit.bladi.exception.MourabahaParametersException;
-import com.credit.bladi.exception.SimulationException;
 import com.credit.bladi.exception.ValidationException;
 import com.credit.bladi.exception.ValidationException.ValidationExceptionType;
 import com.credit.bladi.service.request.IRequestContext;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -21,7 +17,10 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,24 +43,22 @@ import tools.jackson.databind.exc.UnrecognizedPropertyException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
-
     private static final Logger LOGGER = LogManager.getLogger(ApiExceptionHandler.class);
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private static final String APP_CODE = "CB";
 
-    private static final String ERROR_DESCRIPTION = "One or more invalid fields: %s. Please check your request.";
-
-    private static final String ERROR_MESSAGE_BINDING = "Field '%s' is invalid or missing. Please check your request.";
-
-    private static final String TYPE_ERROR_MESSAGE_BINDING =
-        "Field '%s' has an invalid type. Please check your request.";
-
     private final IRequestContext requestContext;
 
-    public ApiExceptionHandler(IRequestContext requestContext) {
+    private final MessageSource messageSource;
+
+    private final Clock clock;
+
+    public ApiExceptionHandler(IRequestContext requestContext, MessageSource messageSource, Clock clock) {
+        this.clock = clock;
         this.requestContext = requestContext;
+        this.messageSource = messageSource;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -88,8 +85,8 @@ public class ApiExceptionHandler {
     protected ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
         Throwable cause = e.getCause();
         if (cause instanceof UnrecognizedPropertyException upe) {
-            String message = ValidationException
-                .of(ValidationExceptionType.UNKNOWN_KEY, upe.getPropertyName()).getMessage();
+            String message = localize(ValidationException.of(ValidationExceptionType.UNKNOWN_KEY,
+                upe.getPropertyName()));
             return new ResponseEntity<>(
                 new ErrorResponse(requestId(), now(), errorCode(400), message), HttpStatus.BAD_REQUEST);
         }
@@ -103,7 +100,7 @@ public class ApiExceptionHandler {
     protected ResponseEntity<ErrorResponse> handleMismatchedInputException(MismatchedInputException e) {
         if ((e.getTargetType() != null && e.getTargetType().isArray())
             || (e.getMessage() != null && e.getMessage().contains("Trailing token"))) {
-            String message = ValidationException.of(ValidationExceptionType.BATCH_NOT_ALLOWED).getMessage();
+            String message = localize(ValidationException.of(ValidationExceptionType.BATCH_NOT_ALLOWED));
             return new ResponseEntity<>(
                 new ErrorResponse(requestId(), now(), errorCode(400), message), HttpStatus.BAD_REQUEST);
         }
@@ -116,56 +113,18 @@ public class ApiExceptionHandler {
             fieldInfo = "unknown";
         }
         return new ResponseEntity<>(new ErrorResponse(requestId(), now(), errorCode(400),
-            String.format(TYPE_ERROR_MESSAGE_BINDING, fieldInfo)), HttpStatus.BAD_REQUEST);
+            localize("error.field.invalidType", fieldInfo)), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ApiException.class)
     public final ResponseEntity<ErrorResponse> handleApiException(ApiException e) {
-        LOGGER.error("Service error [{}]", e.getStatusCode().value());
-        return new ResponseEntity<>(buildErrorResponse(e.getStatusCode().value()), toHttpStatus(e.getStatusCode()));
-    }
-
-    @ExceptionHandler(AuthException.class)
-    public final ResponseEntity<ErrorResponse> handleAuthException(AuthException e) {
-        LOGGER.warn("Auth error [{}]: {}", e.getType(), e.getMessage());
+        if (e.getStatusCode() == ApiStatus.INTERNAL_SERVER_ERROR) {
+            LOGGER.error("{} [{}]: {}", e.getClass().getSimpleName(), e.getStatusCode().value(), e.getMessage(), e);
+        } else {
+            LOGGER.warn("{} [{}]: {}", e.getClass().getSimpleName(), e.getStatusCode().value(), e.getMessage());
+        }
         ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(e.getStatusCode().value()), e.getMessage());
-        return new ResponseEntity<>(body, toHttpStatus(e.getStatusCode()));
-    }
-
-    @ExceptionHandler(BAMException.class)
-    public final ResponseEntity<ErrorResponse> handleBAMException(BAMException e) {
-        LOGGER.warn("BAM rule violation [{}]: {}", e.getType(), e.getMessage());
-        ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(e.getStatusCode().value()), e.getMessage());
-        return new ResponseEntity<>(body, toHttpStatus(e.getStatusCode()));
-    }
-
-    @ExceptionHandler(SimulationException.class)
-    public final ResponseEntity<ErrorResponse> handleSimulationException(SimulationException e) {
-        ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(e.getStatusCode().value()), e.getMessage());
-        return new ResponseEntity<>(body, toHttpStatus(e.getStatusCode()));
-    }
-
-    @ExceptionHandler(BamParametersException.class)
-    public final ResponseEntity<ErrorResponse> handleBamParametersException(BamParametersException e) {
-        ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(e.getStatusCode().value()), e.getMessage());
-        return new ResponseEntity<>(body, toHttpStatus(e.getStatusCode()));
-    }
-
-    @ExceptionHandler(CreditRateException.class)
-    public final ResponseEntity<ErrorResponse> handleCreditRateException(CreditRateException e) {
-        ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(e.getStatusCode().value()), e.getMessage());
-        return new ResponseEntity<>(body, toHttpStatus(e.getStatusCode()));
-    }
-
-    @ExceptionHandler(MourabahaParametersException.class)
-    public final ResponseEntity<ErrorResponse> handleMourabahaParametersException(MourabahaParametersException e) {
-        ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(e.getStatusCode().value()), e.getMessage());
+            requestId(), now(), errorCode(e.getStatusCode().value()), localize(e));
         return new ResponseEntity<>(body, toHttpStatus(e.getStatusCode()));
     }
 
@@ -173,7 +132,7 @@ public class ApiExceptionHandler {
     public final ResponseEntity<ErrorResponse> handleMissingServletRequestParameter(
             MissingServletRequestParameterException e) {
         ErrorResponse body = new ErrorResponse(requestId(), now(), errorCode(HttpStatus.BAD_REQUEST.value()),
-            String.format(ERROR_MESSAGE_BINDING, e.getParameterName()));
+            localize("error.field.invalid", e.getParameterName()));
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
@@ -181,7 +140,6 @@ public class ApiExceptionHandler {
     public final ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException e) {
         return new ResponseEntity<>(buildErrorResponse(HttpStatus.NOT_FOUND.value()), HttpStatus.NOT_FOUND);
     }
-
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public final ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
@@ -193,7 +151,7 @@ public class ApiExceptionHandler {
     public final ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
             MethodArgumentTypeMismatchException e) {
         ErrorResponse body = new ErrorResponse(requestId(), now(), errorCode(HttpStatus.BAD_REQUEST.value()),
-            String.format(TYPE_ERROR_MESSAGE_BINDING, e.getName()));
+            localize("error.field.invalidType", e.getName()));
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
@@ -218,7 +176,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public final ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException e) {
         String message = e.getConstraintViolations().stream()
-            .map(v -> v.getMessage())
+            .map(ConstraintViolation::getMessage)
             .findFirst()
             .orElse(getErrorMessage(HttpStatus.BAD_REQUEST.value()));
         return new ResponseEntity<>(
@@ -229,16 +187,22 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ValidationException.class)
     public final ResponseEntity<ErrorResponse> handleValidationException(ValidationException e) {
         ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(HttpStatus.BAD_REQUEST.value()), e.getMessage());
+            requestId(), now(), errorCode(HttpStatus.BAD_REQUEST.value()), localize(e));
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public final ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
         LOGGER.warn("Invalid domain input: {}", e.getMessage());
-        ErrorResponse body = new ErrorResponse(
-            requestId(), now(), errorCode(HttpStatus.BAD_REQUEST.value()), e.getMessage());
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(buildErrorResponse(HttpStatus.BAD_REQUEST.value()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public final ResponseEntity<ErrorResponse> handleInvalidDataAccessApiUsage(InvalidDataAccessApiUsageException e) {
+        if (e.getCause() instanceof IllegalArgumentException invalidInput) {
+            return handleIllegalArgumentException(invalidInput);
+        }
+        return handleUnexpectedException(e);
     }
 
     @ExceptionHandler(Exception.class)
@@ -253,17 +217,26 @@ public class ApiExceptionHandler {
     }
 
     private String getErrorMessage(int statusCode) {
-        return switch (statusCode) {
-            case 400 -> "Invalid payload or incorrect JSON format. Please check your request.";
-            case 401 -> "Access to this resource requires valid authentication. Please check your credentials.";
-            case 403 -> "Access denied for this request. Please check your permissions.";
-            case 404 -> "The resource you requested does not exist or is not available.";
-            case 405 -> "This HTTP method is not supported for this resource.";
-            case 406 -> "None of the available representations for this resource matches the Accept header sent.";
-            case 409 -> "This resource was modified concurrently. Please retry with the latest version.";
-            case 415 -> "Unsupported Content-Type. Please use application/json.";
-            default -> "Internal server error, please try again later.";
+        String key = switch (statusCode) {
+            case 400 -> "error.status.400";
+            case 401 -> "error.status.401";
+            case 403 -> "error.status.403";
+            case 404 -> "error.status.404";
+            case 405 -> "error.status.405";
+            case 406 -> "error.status.406";
+            case 409 -> "error.status.409";
+            case 415 -> "error.status.415";
+            default -> "error.status.default";
         };
+        return localize(key);
+    }
+
+    private String localize(ApiException e) {
+        return localize(e.getMessageKey(), e.getArgs());
+    }
+
+    private String localize(String key, Object... args) {
+        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
     }
 
     private String requestId() {
@@ -272,7 +245,7 @@ public class ApiExceptionHandler {
     }
 
     private String now() {
-        return LocalDateTime.now().format(DATE_TIME_FORMATTER);
+        return LocalDateTime.now(clock).format(DATE_TIME_FORMATTER);
     }
 
     private String buildErrorDescription(MethodArgumentNotValidException e) {
@@ -289,12 +262,12 @@ public class ApiExceptionHandler {
         if (invalidFields.size() == 1) {
             FieldError fieldError = fieldErrors.getFirst();
             if (fieldError.isBindingFailure()) {
-                return String.format(ERROR_MESSAGE_BINDING, fieldError.getField());
+                return localize("error.field.invalid", fieldError.getField());
             }
             return fieldError.getDefaultMessage();
         }
 
-        return String.format(ERROR_DESCRIPTION, String.join("; ", invalidFields));
+        return localize("error.fields.invalid", String.join("; ", invalidFields));
     }
 
     private String errorCode(int statusCode) {

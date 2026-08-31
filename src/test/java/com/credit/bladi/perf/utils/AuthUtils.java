@@ -10,7 +10,6 @@ import static io.gatling.javaapi.http.HttpDsl.status;
 import io.gatling.javaapi.core.ChainBuilder;
 
 public class AuthUtils {
-
     private static final String LOGIN_ENDPOINT = "/api/v1/auth/login";
 
     public static ChainBuilder login() {

@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.model;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_12;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_300;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -9,7 +11,6 @@ import com.credit.bladi.model.vo.DurationRange;
 import org.junit.jupiter.api.Test;
 
 class DurationRangeTest {
-
     @Test
     void shouldCreateDurationRangeWithOf() {
         DurationRange range = DurationRange.of(12, 300);
@@ -56,8 +57,8 @@ class DurationRangeTest {
     void shouldHaveToStringWithBrackets() {
         DurationRange range = DurationRange.of(12, 300);
         String str = range.toString();
-        assertTrue(str.contains("12"));
-        assertTrue(str.contains("300"));
+        assertTrue(str.contains(TEXT_12));
+        assertTrue(str.contains(TEXT_300));
         assertTrue(str.contains("months"));
     }
 

@@ -5,12 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.credit.bladi.exception.BAMException;
 import com.credit.bladi.model.vo.DurationRange;
 import org.junit.jupiter.api.Test;
 
 class DurationRangeTest {
-
     @Test
     void shouldCreateWithValidRange() {
         DurationRange range = DurationRange.of(12, 300);
@@ -48,18 +46,6 @@ class DurationRangeTest {
         DurationRange range = DurationRange.of(12, 300);
         assertFalse(range.contains(11));
         assertFalse(range.contains(301));
-    }
-
-    @Test
-    void shouldNotThrowWhenAssertContainsWithinRange() {
-        DurationRange range = DurationRange.of(12, 300);
-        range.assertContains(150);
-    }
-
-    @Test
-    void shouldThrowBamExceptionWhenAssertContainsOutsideRange() {
-        DurationRange range = DurationRange.of(12, 300);
-        assertThrows(BAMException.class, () -> range.assertContains(400));
     }
 
     @Test

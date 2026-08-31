@@ -7,29 +7,23 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface RefreshTokenDatasource extends JpaRepository<RefreshTokenEntity, Long> {
-
     Optional<RefreshTokenEntity> findByTokenHash(String tokenHash);
 
-    @Transactional
     @Modifying
     @Query("UPDATE RefreshTokenEntity r SET r.revoked = true WHERE r.tokenHash = :tokenHash")
     void revokeByTokenHash(@Param("tokenHash") String tokenHash);
 
-    @Transactional
     @Modifying
     @Query("UPDATE RefreshTokenEntity r SET r.revoked = true WHERE r.tokenHash = :tokenHash AND r.revoked = false")
     int revokeIfActiveByTokenHash(@Param("tokenHash") String tokenHash);
 
-    @Transactional
     @Modifying
     @Query("UPDATE RefreshTokenEntity r SET r.revoked = true WHERE r.userId = :userId AND r.revoked = false")
     void revokeAllByUserId(@Param("userId") Long userId);
 
-    @Transactional
     @Modifying
     @Query("DELETE FROM RefreshTokenEntity r WHERE r.expiresAt < :now")
     int deleteExpiredTokens(@Param("now") long now);

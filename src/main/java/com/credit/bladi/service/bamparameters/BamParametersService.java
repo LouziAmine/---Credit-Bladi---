@@ -5,56 +5,59 @@ import static com.credit.bladi.exception.BamParametersException.BamParametersExc
 import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.exception.BamParametersException;
 import com.credit.bladi.model.bam.BamParametersModel;
-import com.credit.bladi.model.bam.BamParametersPatchResult;
 import com.credit.bladi.model.enums.AuditAction;
+import com.credit.bladi.model.parameters.RegulatoryLimits;
+import com.credit.bladi.model.parameters.VersionedPatchResult;
 import com.credit.bladi.repository.bam.IBamParametersRepository;
 import com.credit.bladi.service.audit.IAuditService;
+import com.credit.bladi.service.parameters.AbstractVersionedParametersService;
 import com.credit.bladi.service.security.ICurrentActorProvider;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class BamParametersService implements IBamParametersService {
-
-    private static final Logger LOGGER = LogManager.getLogger(BamParametersService.class);
-
+public class BamParametersService extends AbstractVersionedParametersService<BamParametersModel>
+        implements IBamParametersService {
     private final IBamParametersRepository repository;
 
-    private final IAuditService auditService;
-
-    private final ICurrentActorProvider currentActorProvider;
-
     public BamParametersService(IBamParametersRepository repository, IAuditService auditService,
-                                ICurrentActorProvider currentActorProvider) {
+                                ICurrentActorProvider currentActorProvider,
+                                RegulatoryLimits regulatoryLimits) {
+        super(auditService, currentActorProvider, AuditAction.BAM_PARAMETERS_UPDATE, regulatoryLimits);
         this.repository = repository;
-        this.auditService = auditService;
-        this.currentActorProvider = currentActorProvider;
     }
 
     @Override
     @Transactional(readOnly = true)
     public CreditPage<BamParametersModel> getAllParameters(int page, int size) {
-        LOGGER.info("GetAllParameters - page={}, size={}", page, size);
         return repository.findAll(page, size);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BamParametersModel getById(Long id) {
-        LOGGER.info("GetById - id={}", id);
-        return repository.findById(id)
-            .orElseThrow(() -> BamParametersException.of(NOT_FOUND));
+    public Long resolveBamParametersId(UUID publicId) {
+        return resolveId(publicId);
     }
 
     @Override
-    public BamParametersModel patchParameters(BamParametersModel bamParametersPatch) {
-        LOGGER.info("PatchParameters - id={}", bamParametersPatch.getId());
-        BamParametersPatchResult result = repository.patchParameters(bamParametersPatch);
-        auditService.log(currentActorProvider.getCurrentUsername(), AuditAction.BAM_PARAMETERS_UPDATE,
-            "id=" + bamParametersPatch.getId() + ", changes=["
-                + result.after().describeChangesFrom(result.before()) + "]");
-        return result.after();
+    protected Optional<BamParametersModel> findById(Long id) {
+        return repository.findById(id);
+    }
+
+    @Override
+    protected Optional<Long> findIdByPublicId(UUID publicId) {
+        return repository.findIdByPublicId(publicId);
+    }
+
+    @Override
+    protected RuntimeException notFoundException() {
+        return BamParametersException.of(NOT_FOUND);
+    }
+
+    @Override
+    protected VersionedPatchResult<BamParametersModel> patchInRepository(BamParametersModel patch) {
+        return repository.patchParameters(patch);
     }
 }

@@ -7,7 +7,6 @@ import static io.gatling.javaapi.http.HttpDsl.status;
 import io.gatling.javaapi.core.ChainBuilder;
 
 public class AuditLogUtils {
-
     public static ChainBuilder getAll() {
         return exec(
             http("GET /api/v1/audit-log")

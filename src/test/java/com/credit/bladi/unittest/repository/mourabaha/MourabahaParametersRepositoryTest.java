@@ -1,5 +1,8 @@
 package com.credit.bladi.unittest.repository.mourabaha;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_10;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_25;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -16,7 +19,6 @@ import com.credit.bladi.exception.MourabahaParametersException;
 import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
 import com.credit.bladi.model.mourabaha.MourabahaParametersPatchResult;
 import com.credit.bladi.repository.mourabaha.MourabahaParametersRepository;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +32,6 @@ import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class MourabahaParametersRepositoryTest {
-
     @Mock
     private MourabahaParametersDatasource datasource;
 
@@ -44,8 +45,8 @@ class MourabahaParametersRepositoryTest {
     private static MourabahaParametersEntity entity() {
         MourabahaParametersEntity entity = new MourabahaParametersEntity();
         entity.setId(1L);
-        entity.setProfitRate(new BigDecimal("5.25"));
-        entity.setVatRate(new BigDecimal("0.10"));
+        entity.setProfitRate(DECIMAL_5_25);
+        entity.setVatRate(DECIMAL_0_10);
         entity.setActive(true);
         return entity;
     }
@@ -118,14 +119,14 @@ class MourabahaParametersRepositoryTest {
 
         MourabahaParametersModel patch = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(com.credit.bladi.model.vo.Rate.of(new BigDecimal("5.50")))
+            .profitRate(com.credit.bladi.model.vo.Rate.of(DECIMAL_5_50))
             .active(true)
             .build();
 
         MourabahaParametersPatchResult result = repository.patchParameters(patch);
 
-        assertEquals(0, new BigDecimal("5.25").compareTo(result.before().getProfitRate().value()));
-        assertEquals(0, new BigDecimal("5.50").compareTo(result.after().getProfitRate().value()));
+        assertEquals(0, DECIMAL_5_25.compareTo(result.before().getProfitRate().value()));
+        assertEquals(0, DECIMAL_5_50.compareTo(result.after().getProfitRate().value()));
         verify(datasource).deactivateAllExcept(1L);
         verify(datasource).save(existing);
     }

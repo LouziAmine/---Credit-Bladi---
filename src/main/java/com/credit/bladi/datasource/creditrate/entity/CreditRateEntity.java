@@ -1,33 +1,39 @@
 package com.credit.bladi.datasource.creditrate.entity;
 
+import com.credit.bladi.common.MergeSupport;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.UUID;
 
 @Entity
 @Table(name = "credit_rate")
 public class CreditRateEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
+    @Column(name = "public_id", nullable = false, unique = true)
+    private UUID publicId;
+
     @Column(name = "csp_code", nullable = false, length = 10)
     private String cspCode;
 
-    @Column(name = "rate_min")
+    @Column(name = "rate_min", precision = 5, scale = 2)
     private BigDecimal rateMin;
 
-    @Column(name = "rate_max")
+    @Column(name = "rate_max", precision = 5, scale = 2)
     private BigDecimal rateMax;
+
+    @Column(name = "rate_formula", nullable = false, length = 10)
+    private String rateFormula;
 
     @Column(name = "min_duration_months")
     private Integer minDurationMonths;
@@ -45,12 +51,23 @@ public class CreditRateEntity {
     public CreditRateEntity() {
     }
 
+    @PrePersist
+    private void generatePublicId() {
+        if (publicId == null) {
+            publicId = UUID.randomUUID();
+        }
+    }
+
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public UUID getPublicId() {
+        return publicId;
     }
 
     public String getCspCode() {
@@ -77,6 +94,14 @@ public class CreditRateEntity {
         this.rateMax = rateMax;
     }
 
+    public String getRateFormula() {
+        return rateFormula;
+    }
+
+    public void setRateFormula(String rateFormula) {
+        this.rateFormula = rateFormula;
+    }
+
     public Integer getMinDurationMonths() {
         return minDurationMonths;
     }
@@ -101,33 +126,15 @@ public class CreditRateEntity {
         this.active = active;
     }
 
-    public Long getVersion() {
-        return version;
-    }
-
-    public void setVersion(Long version) {
-        this.version = version;
-    }
-
     public void merge(CreditRateEntity other) {
-        updateIfDifferent(this::setRateMin, this.rateMin, other.getRateMin());
-        updateIfDifferent(this::setRateMax, this.rateMax, other.getRateMax());
-        updateIfDifferent(this::setMinDurationMonths, this.minDurationMonths, other.getMinDurationMonths());
-        updateIfDifferent(this::setMaxDurationMonths, this.maxDurationMonths, other.getMaxDurationMonths());
-        updateIfDifferent(this::setActive, this.active, other.getActive());
-    }
-
-    private static <T> void updateIfDifferent(Consumer<T> setter, T current, T incoming) {
-        if (Objects.nonNull(incoming) && !valuesEqual(current, incoming)) {
-            setter.accept(incoming);
-        }
-    }
-
-    private static boolean valuesEqual(Object current, Object incoming) {
-        if (current instanceof BigDecimal currentValue && incoming instanceof BigDecimal incomingValue) {
-            return currentValue.compareTo(incomingValue) == 0;
-        }
-        return Objects.equals(current, incoming);
+        MergeSupport.updateIfDifferent(this::setRateMin, this.rateMin, other.getRateMin());
+        MergeSupport.updateIfDifferent(this::setRateMax, this.rateMax, other.getRateMax());
+        MergeSupport.updateIfDifferent(this::setRateFormula, this.rateFormula, other.getRateFormula());
+        MergeSupport.updateIfDifferent(this::setMinDurationMonths, this.minDurationMonths,
+            other.getMinDurationMonths());
+        MergeSupport.updateIfDifferent(this::setMaxDurationMonths, this.maxDurationMonths,
+            other.getMaxDurationMonths());
+        MergeSupport.updateIfDifferent(this::setActive, this.active, other.getActive());
     }
 
     @Override
@@ -149,8 +156,8 @@ public class CreditRateEntity {
     @Override
     public String toString() {
         return String.format(
-            "CreditRateEntity [id=%s, cspCode=%s, rateMin=%s, rateMax=%s, "
+            "CreditRateEntity [id=%s, cspCode=%s, rateMin=%s, rateMax=%s, rateFormula=%s, "
                 + "minDurationMonths=%s, maxDurationMonths=%s, active=%s]",
-            id, cspCode, rateMin, rateMax, minDurationMonths, maxDurationMonths, active);
+            id, cspCode, rateMin, rateMax, rateFormula, minDurationMonths, maxDurationMonths, active);
     }
 }

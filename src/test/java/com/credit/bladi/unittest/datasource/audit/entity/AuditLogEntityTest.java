@@ -1,5 +1,10 @@
 package com.credit.bladi.unittest.datasource.audit.entity;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_LOGIN;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SUCCESS;
+import static com.credit.bladi.unittest.mock.data.MockContacts.IP_10_0_0_1;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -12,7 +17,6 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
 class AuditLogEntityTest {
-
     private static void setId(AuditLogEntity entity, Long id) throws Exception {
         Field field = AuditLogEntity.class.getDeclaredField("id");
         field.setAccessible(true);
@@ -31,16 +35,16 @@ class AuditLogEntityTest {
     void shouldSetAndGetAllFields() {
         AuditLogEntity entity = new AuditLogEntity();
         LocalDateTime now = LocalDateTime.now();
-        entity.setUsername("jdoe");
-        entity.setAction("LOGIN");
-        entity.setIpAddress("10.0.0.1");
-        entity.setDetails("SUCCESS");
+        entity.setUsername(USER_JDOE);
+        entity.setAction(CODE_LOGIN);
+        entity.setIpAddress(IP_10_0_0_1);
+        entity.setDetails(CODE_SUCCESS);
         entity.setPerformedAt(now);
 
-        assertEquals("jdoe", entity.getUsername());
-        assertEquals("LOGIN", entity.getAction());
-        assertEquals("10.0.0.1", entity.getIpAddress());
-        assertEquals("SUCCESS", entity.getDetails());
+        assertEquals(USER_JDOE, entity.getUsername());
+        assertEquals(CODE_LOGIN, entity.getAction());
+        assertEquals(IP_10_0_0_1, entity.getIpAddress());
+        assertEquals(CODE_SUCCESS, entity.getDetails());
         assertEquals(now, entity.getPerformedAt());
     }
 
@@ -78,7 +82,7 @@ class AuditLogEntityTest {
     @Test
     void shouldNotBeEqualToDifferentType() {
         AuditLogEntity entity = new AuditLogEntity();
-        assertFalse(entity.equals("other"));
+        assertFalse(entity.equals(USER_OTHER));
     }
 
     @Test
@@ -90,10 +94,10 @@ class AuditLogEntityTest {
     @Test
     void shouldHaveToString() {
         AuditLogEntity entity = new AuditLogEntity();
-        entity.setUsername("jdoe");
-        entity.setAction("LOGIN");
+        entity.setUsername(USER_JDOE);
+        entity.setAction(CODE_LOGIN);
         String str = entity.toString();
-        assertTrue(str.contains("jdoe"));
-        assertTrue(str.contains("LOGIN"));
+        assertTrue(str.contains(USER_JDOE));
+        assertTrue(str.contains(CODE_LOGIN));
     }
 }

@@ -19,7 +19,6 @@ public record ErrorResponse(
     @Schema(description = "Error description", example = "Field 'amount' is invalid or missing.")
     String description
 ) {
-
     @Override
     public String toString() {
         return String.format("ErrorResponse [requestId=%s, timestamp=%s, errorCode=%s, description=%s]",

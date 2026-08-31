@@ -1,4 +1,4 @@
-Feature: POST /api/v1/users — error cases (MANAGER only)
+Feature: POST /api/v1/users: error cases (MANAGER only)
 
   Background:
     * url baseUrl

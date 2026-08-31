@@ -1,4 +1,4 @@
-Feature: GET /api/v1/mourabaha-parameters/{id} — access restrictions
+Feature: GET /api/v1/mourabaha-parameters/{id}: access restrictions
 
   Background:
     * url baseUrl

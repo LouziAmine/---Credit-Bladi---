@@ -1,7 +1,6 @@
 package com.credit.bladi.exception;
 
 public class CreditRateException extends ApiException {
-
     private final CreditRateExceptionType type;
 
     public enum CreditRateExceptionType {
@@ -9,29 +8,20 @@ public class CreditRateException extends ApiException {
         INVALID_DURATION_RANGE
     }
 
-    private CreditRateException(CreditRateExceptionType type, ApiStatus status) {
-        super(status);
+    private CreditRateException(CreditRateExceptionType type, ApiStatus status, String messageKey) {
+        super(status, messageKey);
         this.type = type;
     }
 
     public static CreditRateException of(CreditRateExceptionType type) {
         return switch (type) {
-            case NOT_FOUND -> new CreditRateException(type, ApiStatus.NOT_FOUND);
-            case INVALID_DURATION_RANGE -> new CreditRateException(type, ApiStatus.BAD_REQUEST);
+            case NOT_FOUND -> new CreditRateException(type, ApiStatus.NOT_FOUND, "creditRate.notFound");
+            case INVALID_DURATION_RANGE ->
+                new CreditRateException(type, ApiStatus.BAD_REQUEST, "creditRate.invalidDurationRange");
         };
     }
 
     public CreditRateExceptionType getType() {
         return type;
-    }
-
-    @Override
-    public String getMessage() {
-        return switch (type) {
-            case NOT_FOUND ->
-                "Credit rate record not found for the given ID.";
-            case INVALID_DURATION_RANGE ->
-                "minDurationMonths and maxDurationMonths must be provided together.";
-        };
     }
 }

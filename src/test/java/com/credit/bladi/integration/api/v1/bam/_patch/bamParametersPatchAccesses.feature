@@ -1,4 +1,4 @@
-Feature: PATCH /api/v1/bam-parameters/{id} — access restrictions
+Feature: PATCH /api/v1/bam-parameters/{id}: access restrictions
 
   Background:
     * url baseUrl

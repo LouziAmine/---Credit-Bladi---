@@ -1,4 +1,4 @@
-Feature: PATCH /api/v1/users/{id}/role — access restrictions (MANAGER only)
+Feature: PATCH /api/v1/users/{id}/role: access restrictions (MANAGER only)
 
   Background:
     * url baseUrl

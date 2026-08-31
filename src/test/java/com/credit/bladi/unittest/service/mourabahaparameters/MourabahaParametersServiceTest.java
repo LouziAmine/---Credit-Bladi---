@@ -1,5 +1,9 @@
 package com.credit.bladi.unittest.service.mourabahaparameters;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_14_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.contains;
@@ -12,12 +16,12 @@ import com.credit.bladi.exception.MourabahaParametersException;
 import com.credit.bladi.model.enums.AuditAction;
 import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
 import com.credit.bladi.model.mourabaha.MourabahaParametersPatchResult;
+import com.credit.bladi.model.parameters.RegulatoryLimits;
 import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.repository.mourabaha.IMourabahaParametersRepository;
 import com.credit.bladi.service.audit.IAuditService;
 import com.credit.bladi.service.mourabahaparameters.MourabahaParametersService;
 import com.credit.bladi.service.security.ICurrentActorProvider;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class MourabahaParametersServiceTest {
-
     @Mock
     private IMourabahaParametersRepository repository;
 
@@ -42,7 +45,8 @@ class MourabahaParametersServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MourabahaParametersService(repository, auditService, currentActorProvider);
+        service = new MourabahaParametersService(repository, auditService, currentActorProvider,
+            new RegulatoryLimits(Rate.of(DECIMAL_14_00)));
     }
 
     @Test
@@ -83,24 +87,24 @@ class MourabahaParametersServiceTest {
     void shouldDelegatePatchParametersToRepositoryAndAuditTheChange() {
         MourabahaParametersModel patch = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.50")))
+            .profitRate(Rate.of(DECIMAL_5_50))
             .build();
         MourabahaParametersModel before = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.00")))
+            .profitRate(Rate.of(DECIMAL_5_00))
             .build();
         MourabahaParametersModel after = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.50")))
+            .profitRate(Rate.of(DECIMAL_5_50))
             .build();
         when(repository.patchParameters(patch)).thenReturn(new MourabahaParametersPatchResult(before, after));
-        when(currentActorProvider.getCurrentUsername()).thenReturn("jdoe");
+        when(currentActorProvider.getCurrentUsername()).thenReturn(USER_JDOE);
 
         MourabahaParametersModel result = service.patchParameters(patch);
 
         assertEquals(after, result);
         verify(repository).patchParameters(patch);
         verify(auditService).log(
-            eq("jdoe"), eq(AuditAction.MOURABAHA_PARAMETERS_UPDATE), contains("profitRate"));
+            eq(USER_JDOE), eq(AuditAction.MOURABAHA_PARAMETERS_UPDATE), contains("profitRate"));
     }
 }

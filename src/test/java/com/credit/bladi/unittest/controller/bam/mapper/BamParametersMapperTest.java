@@ -8,6 +8,8 @@ import static com.credit.bladi.unittest.mock.bam.MockBamParameters.TOTAL;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.bamParametersPage;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.bamParametersResponseDTO;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.patchRequest;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_1000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_10000;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -22,7 +24,6 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.junit.jupiter.api.Test;
 
 class BamParametersMapperTest {
-
     @Test
     void shouldMapPatchDTOToDomain() {
         BamParametersModel domain = BamParametersMapper.toDomain(BAM_ID, patchRequest());
@@ -63,14 +64,14 @@ class BamParametersMapperTest {
     @Test
     void shouldMapPatchDtoWithMoneyFieldsToDomain() {
         com.credit.bladi.controller.dto.bam.request.PatchBamParametersDTO dto =
-            new com.credit.bladi.controller.dto.bam.request.PatchBamParametersDTO();
-        dto.setMinProcessingFees(new java.math.BigDecimal("1000"));
-        dto.setMaxProcessingFees(new java.math.BigDecimal("10000"));
+            new com.credit.bladi.controller.dto.bam.request.PatchBamParametersDTO(
+                null, AMOUNT_1000, AMOUNT_10000,
+                null, null, null, null, null, null, null, null);
 
         BamParametersModel model = BamParametersMapper.toDomain(BAM_ID, dto);
 
-        assertEquals(0, model.getMinProcessingFees().amount().compareTo(new java.math.BigDecimal("1000")));
-        assertEquals(0, model.getMaxProcessingFees().amount().compareTo(new java.math.BigDecimal("10000")));
+        assertEquals(0, model.getMinProcessingFees().amount().compareTo(AMOUNT_1000));
+        assertEquals(0, model.getMaxProcessingFees().amount().compareTo(AMOUNT_10000));
     }
 
     @Test
@@ -79,7 +80,7 @@ class BamParametersMapperTest {
 
         BamParametersResponseDTO dto = BamParametersMapper.toResponseDTO(model);
 
-        assertNull(dto.getProcessingFeesRatio());
-        assertNull(dto.getMinProcessingFees());
+        assertNull(dto.processingFeesRatio());
+        assertNull(dto.minProcessingFees());
     }
 }

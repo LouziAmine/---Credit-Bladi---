@@ -1,25 +1,25 @@
-Feature: GET /api/v1/mourabaha-parameters/{id} — error cases
+Feature: GET /api/v1/mourabaha-parameters/{id}: error cases
 
   Background:
     * url baseUrl
 
   Scenario: Get Mourabaha parameters by non-existent id returns 404
-    Given path 'api', 'v1', 'mourabaha-parameters', 99999
+    Given path 'api', 'v1', 'mourabaha-parameters', java.util.UUID.randomUUID().toString()
     And headers authHeaders
     When method GET
     Then status 404
     And match response == { requestId: '#string', timestamp: '#string', errorCode: 'CB-404', description: 'Mourabaha parameters record not found for the given ID.' }
 
-  Scenario: Get Mourabaha parameters by id = 0 returns 400
+  Scenario: Get Mourabaha parameters by id = 0 returns 400 (not a valid UUID)
     Given path 'api', 'v1', 'mourabaha-parameters', 0
     And headers authHeaders
     When method GET
     Then status 400
-    And match response == { requestId: '#string', timestamp: '#string', errorCode: 'CB-400', description: 'INVALID_ID: id must be a positive number.' }
+    And match response == { requestId: '#string', timestamp: '#string', errorCode: 'CB-400', description: "Field 'id' has an invalid type. Please check your request." }
 
-  Scenario: Get Mourabaha parameters by negative id returns 400
+  Scenario: Get Mourabaha parameters by negative id returns 400 (not a valid UUID)
     Given path 'api', 'v1', 'mourabaha-parameters', -1
     And headers authHeaders
     When method GET
     Then status 400
-    And match response == { requestId: '#string', timestamp: '#string', errorCode: 'CB-400', description: 'INVALID_ID: id must be a positive number.' }
+    And match response == { requestId: '#string', timestamp: '#string', errorCode: 'CB-400', description: "Field 'id' has an invalid type. Please check your request." }

@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.cache.CacheManager;
 
 class CacheAndSchedulerConfigTest {
-
     @Test
     void shouldCreateCacheManager() {
         CacheConfig config = new CacheConfig();

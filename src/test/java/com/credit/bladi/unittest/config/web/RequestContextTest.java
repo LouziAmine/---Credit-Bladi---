@@ -1,5 +1,6 @@
 package com.credit.bladi.unittest.config.web;
 
+import static com.credit.bladi.unittest.mock.data.MockContacts.IP_10_0_0_1;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -7,7 +8,6 @@ import com.credit.bladi.config.web.RequestContext;
 import org.junit.jupiter.api.Test;
 
 class RequestContextTest {
-
     @Test
     void shouldHaveNonNullDefaultRequestId() {
         RequestContext context = new RequestContext();
@@ -24,7 +24,7 @@ class RequestContextTest {
     @Test
     void shouldUpdateClientIp() {
         RequestContext context = new RequestContext();
-        context.setClientIp("10.0.0.1");
-        assertEquals("10.0.0.1", context.getClientIp());
+        context.setClientIp(IP_10_0_0_1);
+        assertEquals(IP_10_0_0_1, context.getClientIp());
     }
 }

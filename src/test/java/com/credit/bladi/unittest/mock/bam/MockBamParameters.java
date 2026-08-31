@@ -1,5 +1,16 @@
 package com.credit.bladi.unittest.mock.bam;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_3000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_6000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_0004;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_003;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_005;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_01;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_015;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_04;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_4000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_9000;
+
 import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.controller.dto.bam.request.PatchBamParametersDTO;
 import com.credit.bladi.controller.dto.bam.response.BamParametersResponseDTO;
@@ -9,21 +20,22 @@ import com.credit.bladi.model.vo.Money;
 import com.credit.bladi.model.vo.Ratio;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 public final class MockBamParameters {
-
     public static final Long BAM_ID = 1L;
-    public static final BigDecimal PROCESSING_FEES_RATIO = new BigDecimal("0.003");
-    public static final BigDecimal MIN_FEES = new BigDecimal("3000");
-    public static final BigDecimal MAX_FEES = new BigDecimal("6000");
-    public static final BigDecimal REGISTRATION_FEE_RATIO = new BigDecimal("0.04");
-    public static final BigDecimal LAND_CONSERVATION_RATIO = new BigDecimal("0.015");
-    public static final BigDecimal NOTARY_FEE_RATIO = new BigDecimal("0.01");
-    public static final BigDecimal LTV_RATIO = new BigDecimal("0.9000");
-    public static final BigDecimal MAX_DEBT_RATIO = new BigDecimal("0.4000");
+    public static final UUID BAM_PUBLIC_ID = UUID.randomUUID();
+    public static final BigDecimal PROCESSING_FEES_RATIO = DECIMAL_0_003;
+    public static final BigDecimal MIN_FEES = AMOUNT_3000;
+    public static final BigDecimal MAX_FEES = AMOUNT_6000;
+    public static final BigDecimal REGISTRATION_FEE_RATIO = DECIMAL_0_04;
+    public static final BigDecimal LAND_CONSERVATION_RATIO = DECIMAL_0_015;
+    public static final BigDecimal NOTARY_FEE_RATIO = DECIMAL_0_01;
+    public static final BigDecimal LTV_RATIO = DECIMAL_0_9000;
+    public static final BigDecimal MAX_DEBT_RATIO = DECIMAL_0_4000;
     public static final Integer MAX_AGE_AT_MATURITY = 75;
-    public static final BigDecimal ADI_MONTHLY_RATE = new BigDecimal("0.0004");
-    public static final BigDecimal PATCH_PROCESSING_FEES_RATIO = new BigDecimal("0.005");
+    public static final BigDecimal ADI_MONTHLY_RATE = DECIMAL_0_0004;
+    public static final BigDecimal PATCH_PROCESSING_FEES_RATIO = DECIMAL_0_005;
     public static final Integer PAGE = 1;
     public static final Integer SIZE = 20;
     public static final Integer TOTAL = 1;
@@ -50,6 +62,7 @@ public final class MockBamParameters {
     public static BamParametersModel bamParametersModel() {
         return BamParametersModel.getBuilder()
             .id(BAM_ID)
+            .publicId(BAM_PUBLIC_ID)
             .processingFeesRatio(Ratio.of(PROCESSING_FEES_RATIO))
             .minProcessingFees(Money.of(MIN_FEES))
             .maxProcessingFees(Money.of(MAX_FEES))
@@ -65,20 +78,19 @@ public final class MockBamParameters {
     }
 
     public static BamParametersResponseDTO bamParametersResponseDTO() {
-        BamParametersResponseDTO dto = new BamParametersResponseDTO();
-        dto.setId(BAM_ID);
-        dto.setProcessingFeesRatio(PROCESSING_FEES_RATIO);
-        dto.setMinProcessingFees(MIN_FEES);
-        dto.setMaxProcessingFees(MAX_FEES);
-        dto.setRegistrationFeeRatio(REGISTRATION_FEE_RATIO);
-        dto.setLandConservationRatio(LAND_CONSERVATION_RATIO);
-        dto.setNotaryFeeRatio(NOTARY_FEE_RATIO);
-        dto.setLtvRatio(LTV_RATIO);
-        dto.setMaxDebtRatio(MAX_DEBT_RATIO);
-        dto.setMaxAgeAtMaturity(MAX_AGE_AT_MATURITY);
-        dto.setAdiMonthlyRate(ADI_MONTHLY_RATE);
-        dto.setActive(true);
-        return dto;
+        return new BamParametersResponseDTO(
+            BAM_PUBLIC_ID,
+            PROCESSING_FEES_RATIO,
+            MIN_FEES,
+            MAX_FEES,
+            REGISTRATION_FEE_RATIO,
+            LAND_CONSERVATION_RATIO,
+            NOTARY_FEE_RATIO,
+            LTV_RATIO,
+            MAX_DEBT_RATIO,
+            MAX_AGE_AT_MATURITY,
+            ADI_MONTHLY_RATE,
+            true);
     }
 
     public static CreditPage<BamParametersModel> bamParametersPage() {
@@ -92,8 +104,7 @@ public final class MockBamParameters {
     }
 
     public static PatchBamParametersDTO patchRequest() {
-        PatchBamParametersDTO dto = new PatchBamParametersDTO();
-        dto.setProcessingFeesRatio(PATCH_PROCESSING_FEES_RATIO);
-        return dto;
+        return new PatchBamParametersDTO(
+            PATCH_PROCESSING_FEES_RATIO, null, null, null, null, null, null, null, null, null, null);
     }
 }

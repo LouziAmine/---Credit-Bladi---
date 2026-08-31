@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookieTokenHelper {
-
     public static final String ACCESS_COOKIE_NAME = "cb_access_token";
     public static final String REFRESH_COOKIE_NAME = "cb_refresh_token";
 

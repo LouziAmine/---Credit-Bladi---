@@ -1,5 +1,11 @@
 package com.credit.bladi.unittest.model;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_10;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_25;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_5_25;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -9,11 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
 import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.model.vo.Ratio;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class MourabahaParametersModelTest {
-
     @Test
     void shouldAllowNullFieldsForPartialPatch() {
         MourabahaParametersModel model = MourabahaParametersModel.getBuilder().id(1L).build();
@@ -47,21 +51,21 @@ class MourabahaParametersModelTest {
     @Test
     void shouldNotBeEqualToDifferentType() {
         MourabahaParametersModel model = MourabahaParametersModel.getBuilder().id(1L).build();
-        assertFalse(model.equals("other"));
+        assertFalse(model.equals(USER_OTHER));
     }
 
     @Test
     void shouldDescribeNoChangesWhenNothingChanged() {
         MourabahaParametersModel before = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.00")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_00))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
         MourabahaParametersModel after = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.00")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_00))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
 
@@ -72,8 +76,8 @@ class MourabahaParametersModelTest {
     void shouldDescribeProfitRateAndVatRateBecomingUnset() {
         MourabahaParametersModel before = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.00")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_00))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .build();
         MourabahaParametersModel after = MourabahaParametersModel.getBuilder().id(1L).build();
 
@@ -99,15 +103,15 @@ class MourabahaParametersModelTest {
     void shouldBuildWithAllFields() {
         MourabahaParametersModel model = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.25")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_25))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
 
         assertNotNull(model);
         assertEquals(1L, model.getId());
-        assertEquals(Rate.of(new BigDecimal("5.25")), model.getProfitRate());
-        assertEquals(Ratio.of(new BigDecimal("0.10")), model.getVatRate());
+        assertEquals(Rate.of(DECIMAL_5_25), model.getProfitRate());
+        assertEquals(Ratio.of(DECIMAL_0_10), model.getVatRate());
         assertTrue(model.getActive());
     }
 
@@ -137,21 +141,21 @@ class MourabahaParametersModelTest {
     void shouldDescribeChangesFromPrevious() {
         MourabahaParametersModel before = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.00")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_00))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
         MourabahaParametersModel after = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.25")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_25))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
 
         String changes = after.describeChangesFrom(before);
 
         assertTrue(changes.contains("profitRate"));
-        assertTrue(changes.contains("5.00"));
-        assertTrue(changes.contains("5.25"));
+        assertTrue(changes.contains(TEXT_5_00));
+        assertTrue(changes.contains(TEXT_5_25));
     }
 }

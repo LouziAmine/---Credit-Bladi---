@@ -1,30 +1,36 @@
 package com.credit.bladi.datasource.mourabaha.entity;
 
+import com.credit.bladi.common.MergeSupport;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.UUID;
 
 @Entity
 @Table(name = "mourabaha_parameters")
 public class MourabahaParametersEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "profit_rate", nullable = false)
+    @Column(name = "public_id", nullable = false, unique = true)
+    private UUID publicId;
+
+    @Column(name = "profit_rate", nullable = false, precision = 5, scale = 2)
     private BigDecimal profitRate;
 
-    @Column(name = "vat_rate", nullable = false)
+    @Column(name = "vat_rate", nullable = false, precision = 6, scale = 4)
     private BigDecimal vatRate;
+
+    @Column(name = "takaful_monthly_rate", nullable = false, precision = 6, scale = 4)
+    private BigDecimal takafulMonthlyRate;
 
     @Column(name = "active")
     private Boolean active;
@@ -36,12 +42,23 @@ public class MourabahaParametersEntity {
     public MourabahaParametersEntity() {
     }
 
+    @PrePersist
+    private void generatePublicId() {
+        if (publicId == null) {
+            publicId = UUID.randomUUID();
+        }
+    }
+
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public UUID getPublicId() {
+        return publicId;
     }
 
     public BigDecimal getProfitRate() {
@@ -60,6 +77,14 @@ public class MourabahaParametersEntity {
         this.vatRate = vatRate;
     }
 
+    public BigDecimal getTakafulMonthlyRate() {
+        return takafulMonthlyRate;
+    }
+
+    public void setTakafulMonthlyRate(BigDecimal takafulMonthlyRate) {
+        this.takafulMonthlyRate = takafulMonthlyRate;
+    }
+
     public Boolean getActive() {
         return active;
     }
@@ -69,22 +94,11 @@ public class MourabahaParametersEntity {
     }
 
     public void merge(MourabahaParametersEntity other) {
-        updateIfDifferent(this::setProfitRate, this.profitRate, other.getProfitRate());
-        updateIfDifferent(this::setVatRate, this.vatRate, other.getVatRate());
-        updateIfDifferent(this::setActive, this.active, other.getActive());
-    }
-
-    private static <T> void updateIfDifferent(Consumer<T> setter, T current, T incoming) {
-        if (Objects.nonNull(incoming) && !valuesEqual(current, incoming)) {
-            setter.accept(incoming);
-        }
-    }
-
-    private static boolean valuesEqual(Object current, Object incoming) {
-        if (current instanceof BigDecimal currentValue && incoming instanceof BigDecimal incomingValue) {
-            return currentValue.compareTo(incomingValue) == 0;
-        }
-        return Objects.equals(current, incoming);
+        MergeSupport.updateIfDifferent(this::setProfitRate, this.profitRate, other.getProfitRate());
+        MergeSupport.updateIfDifferent(this::setVatRate, this.vatRate, other.getVatRate());
+        MergeSupport.updateIfDifferent(this::setTakafulMonthlyRate, this.takafulMonthlyRate,
+            other.getTakafulMonthlyRate());
+        MergeSupport.updateIfDifferent(this::setActive, this.active, other.getActive());
     }
 
     @Override
@@ -106,7 +120,7 @@ public class MourabahaParametersEntity {
     @Override
     public String toString() {
         return String.format(
-            "MourabahaParametersEntity [id=%s, profitRate=%s, vatRate=%s, active=%s]",
-            id, profitRate, vatRate, active);
+            "MourabahaParametersEntity [id=%s, profitRate=%s, vatRate=%s, takafulMonthlyRate=%s, active=%s]",
+            id, profitRate, vatRate, takafulMonthlyRate, active);
     }
 }

@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.controller.creditrate;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SALA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -12,11 +14,11 @@ import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.controller.creditrate.CreditRateController;
 import com.credit.bladi.controller.dto.creditrate.request.PatchCreditRateDTO;
 import com.credit.bladi.controller.dto.creditrate.response.CreditRateResponseDTO;
+import com.credit.bladi.model.creditrate.CreditRateModel;
 import com.credit.bladi.model.enums.CspCode;
-import com.credit.bladi.model.simulation.CreditRateModel;
 import com.credit.bladi.service.creditrate.ICreditRateService;
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,9 +29,10 @@ import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class CreditRateControllerTest {
-
     @Mock
     private ICreditRateService creditRateService;
+
+    private static final UUID PUBLIC_ID = UUID.randomUUID();
 
     private CreditRateController controller;
 
@@ -39,7 +42,7 @@ class CreditRateControllerTest {
     }
 
     private static CreditRateModel model() {
-        return CreditRateModel.getBuilder().id(1L).cspCode(CspCode.SALA).active(true).build();
+        return CreditRateModel.getBuilder().id(1L).publicId(PUBLIC_ID).cspCode(CspCode.SALA).active(true).build();
     }
 
     @Test
@@ -57,26 +60,27 @@ class CreditRateControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
         assertEquals(1, result.getBody().getItems().size());
-        assertEquals("SALA", result.getBody().getItems().get(0).getCspCode());
+        assertEquals(CODE_SALA, result.getBody().getItems().get(0).cspCode());
     }
 
     @Test
     void shouldReturn200WithCreditRateById() {
+        when(creditRateService.resolveCreditRateId(PUBLIC_ID)).thenReturn(1L);
         when(creditRateService.getById(1L)).thenReturn(model());
 
-        ResponseEntity<CreditRateResponseDTO> result = controller.getById(1L);
+        ResponseEntity<CreditRateResponseDTO> result = controller.getById(PUBLIC_ID);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals("SALA", result.getBody().getCspCode());
+        assertEquals(CODE_SALA, result.getBody().cspCode());
     }
 
     @Test
     void shouldReturn204AfterPatchingCreditRate() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        dto.setRateMin(new BigDecimal("3.50"));
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(DECIMAL_3_50, null, null, null, null, null);
+        when(creditRateService.resolveCreditRateId(PUBLIC_ID)).thenReturn(1L);
 
-        ResponseEntity<Void> result = controller.patchCreditRate(1L, dto);
+        ResponseEntity<Void> result = controller.patchCreditRate(PUBLIC_ID, dto);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
         verify(creditRateService).patchParameters(any(CreditRateModel.class));

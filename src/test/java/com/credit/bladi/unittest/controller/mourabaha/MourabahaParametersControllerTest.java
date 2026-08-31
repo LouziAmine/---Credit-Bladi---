@@ -1,5 +1,8 @@
 package com.credit.bladi.unittest.controller.mourabaha;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_10;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_25;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,8 +19,8 @@ import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
 import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.model.vo.Ratio;
 import com.credit.bladi.service.mourabahaparameters.IMourabahaParametersService;
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +31,10 @@ import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class MourabahaParametersControllerTest {
-
     @Mock
     private IMourabahaParametersService mourabahaParametersService;
+
+    private static final UUID PUBLIC_ID = UUID.randomUUID();
 
     private MourabahaParametersController controller;
 
@@ -42,8 +46,9 @@ class MourabahaParametersControllerTest {
     private static MourabahaParametersModel model() {
         return MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.25")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .publicId(PUBLIC_ID)
+            .profitRate(Rate.of(DECIMAL_5_25))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
     }
@@ -63,26 +68,27 @@ class MourabahaParametersControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
         assertEquals(1, result.getBody().getItems().size());
-        assertEquals(1L, result.getBody().getItems().get(0).getId());
+        assertEquals(PUBLIC_ID, result.getBody().getItems().get(0).id());
     }
 
     @Test
     void shouldReturn200WithParametersById() {
+        when(mourabahaParametersService.resolveMourabahaParametersId(PUBLIC_ID)).thenReturn(1L);
         when(mourabahaParametersService.getById(1L)).thenReturn(model());
 
-        ResponseEntity<MourabahaParametersResponseDTO> result = controller.getById(1L);
+        ResponseEntity<MourabahaParametersResponseDTO> result = controller.getById(PUBLIC_ID);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals(1L, result.getBody().getId());
+        assertEquals(PUBLIC_ID, result.getBody().id());
     }
 
     @Test
     void shouldReturn204AfterPatchingParameters() {
-        PatchMourabahaParametersDTO dto = new PatchMourabahaParametersDTO();
-        dto.setProfitRate(new BigDecimal("5.50"));
+        PatchMourabahaParametersDTO dto = new PatchMourabahaParametersDTO(DECIMAL_5_50, null, null, null);
+        when(mourabahaParametersService.resolveMourabahaParametersId(PUBLIC_ID)).thenReturn(1L);
 
-        ResponseEntity<Void> result = controller.patchParameters(1L, dto);
+        ResponseEntity<Void> result = controller.patchParameters(PUBLIC_ID, dto);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
         verify(mourabahaParametersService).patchParameters(any(MourabahaParametersModel.class));

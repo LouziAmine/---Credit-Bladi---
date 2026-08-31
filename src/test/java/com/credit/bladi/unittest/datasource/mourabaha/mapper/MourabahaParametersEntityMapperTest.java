@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.datasource.mourabaha.mapper;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_10;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_25;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,17 +12,15 @@ import com.credit.bladi.datasource.mourabaha.mapper.MourabahaParametersEntityMap
 import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
 import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.model.vo.Ratio;
-import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class MourabahaParametersEntityMapperTest {
-
     private static MourabahaParametersEntity entity() {
         MourabahaParametersEntity entity = new MourabahaParametersEntity();
         entity.setId(1L);
-        entity.setProfitRate(new BigDecimal("5.25"));
-        entity.setVatRate(new BigDecimal("0.10"));
+        entity.setProfitRate(DECIMAL_5_25);
+        entity.setVatRate(DECIMAL_0_10);
         entity.setActive(true);
         return entity;
     }
@@ -30,8 +30,8 @@ class MourabahaParametersEntityMapperTest {
         MourabahaParametersModel model = MourabahaParametersEntityMapper.mapFromEntity(entity());
 
         assertEquals(1L, model.getId());
-        assertEquals(0, model.getProfitRate().value().compareTo(new BigDecimal("5.25")));
-        assertEquals(0, model.getVatRate().value().compareTo(new BigDecimal("0.10")));
+        assertEquals(0, model.getProfitRate().value().compareTo(DECIMAL_5_25));
+        assertEquals(0, model.getVatRate().value().compareTo(DECIMAL_0_10));
         assertTrue(model.getActive());
     }
 
@@ -50,16 +50,16 @@ class MourabahaParametersEntityMapperTest {
     void shouldMapModelToEntity() {
         MourabahaParametersModel model = MourabahaParametersModel.getBuilder()
             .id(1L)
-            .profitRate(Rate.of(new BigDecimal("5.25")))
-            .vatRate(Ratio.of(new BigDecimal("0.10")))
+            .profitRate(Rate.of(DECIMAL_5_25))
+            .vatRate(Ratio.of(DECIMAL_0_10))
             .active(true)
             .build();
 
         MourabahaParametersEntity entity = MourabahaParametersEntityMapper.mapToEntity(model);
 
         assertEquals(1L, entity.getId());
-        assertEquals(0, entity.getProfitRate().compareTo(new BigDecimal("5.25")));
-        assertEquals(0, entity.getVatRate().compareTo(new BigDecimal("0.10")));
+        assertEquals(0, entity.getProfitRate().compareTo(DECIMAL_5_25));
+        assertEquals(0, entity.getVatRate().compareTo(DECIMAL_0_10));
         assertTrue(entity.getActive());
     }
 

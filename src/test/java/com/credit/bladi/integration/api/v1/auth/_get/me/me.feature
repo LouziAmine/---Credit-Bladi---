@@ -1,4 +1,4 @@
-Feature: GET /api/v1/auth/me — happy path and access restrictions
+Feature: GET /api/v1/auth/me: happy path and access restrictions
 
   Background:
     * url baseUrl

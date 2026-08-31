@@ -16,11 +16,13 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>Credit Bladi</name>
-    <description>Moroccan Mortgage Credit Simulator — BAM Compliant</description>
+    <description>Moroccan Mortgage Credit Simulator: BAM Compliant</description>
 
     <properties>
         <java.version>25</java.version>
         <springdoc.version>3.0.2</springdoc.version>
+        <tika.version>2.9.2</tika.version>
+        <poi.version>5.5.1</poi.version>
 <jacoco.version>0.8.13</jacoco.version>
         <dependency-check.version>12.1.3</dependency-check.version>
 
@@ -88,12 +90,62 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Generic, reusable Spring Batch import pipeline (see batch/): first consumer is the
+             bulk Excel import of demands, routed through the same IWorkflowEngineService#createDemand
+             every API-created demand goes through. -->
+        <!-- Spring Boot 4 only persists job executions with the JDBC module: without it the job repository
+             is in-memory and every run gets jobExecutionId 1, so import reports mixed up earlier runs. The
+             BATCH_* tables are created by Liquibase. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch-jdbc</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Excel (.xlsx) parsing for the demand bulk import. -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -117,6 +169,14 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- tika-core only (no tika-parsers): magic-byte content-type detection for uploaded
+             documents, so the server never trusts the client-supplied Content-Type header. -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -127,6 +187,13 @@
                     <artifactId>spring-boot-starter-logging</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <version>1.4.1</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -166,7 +233,7 @@
             </exclusions>
         </dependency>
 
-        <!-- Caffeine — in-process cache for BAM parameters and credit rates -->
+        <!-- Caffeine: in-process cache for BAM parameters and credit rates -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
@@ -301,7 +368,7 @@
                 </configuration>
             </plugin>
 
-            <!-- OWASP ASVS V14.2 — scan dependencies for known CVEs (fails on CVSS >= 7).
+            <!-- OWASP ASVS V14.2: scan dependencies for known CVEs (fails on CVSS >= 7).
                  Not bound to a lifecycle phase: needs network access to sync the NVD database,
                  which would break offline/CI builds by default. Run explicitly with:
                  ./mvnw org.owasp:dependency-check-maven:check -->

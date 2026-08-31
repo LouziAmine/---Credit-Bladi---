@@ -1,5 +1,14 @@
 package com.credit.bladi.unittest.model.vo;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_100;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_100_01;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_4_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_25;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_250;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_6_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.MINUS_AMOUNT_1;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,11 +19,10 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class RateTest {
-
     @Test
     void shouldCreateWithPositiveValue() {
-        Rate rate = Rate.of(new BigDecimal("5.25"));
-        assertEquals(0, rate.value().compareTo(new BigDecimal("5.25")));
+        Rate rate = Rate.of(DECIMAL_5_25);
+        assertEquals(0, rate.value().compareTo(DECIMAL_5_25));
     }
 
     @Test
@@ -24,18 +32,18 @@ class RateTest {
 
     @Test
     void shouldRejectNegativeValue() {
-        assertThrows(IllegalArgumentException.class, () -> Rate.of(new BigDecimal("-1")));
+        assertThrows(IllegalArgumentException.class, () -> Rate.of(MINUS_AMOUNT_1));
     }
 
     @Test
     void shouldRejectValueAboveMax() {
-        assertThrows(IllegalArgumentException.class, () -> Rate.of(new BigDecimal("100.01")));
+        assertThrows(IllegalArgumentException.class, () -> Rate.of(DECIMAL_100_01));
     }
 
     @Test
     void shouldAcceptValueAtMax() {
-        Rate rate = Rate.of(new BigDecimal("100"));
-        assertEquals(0, rate.value().compareTo(new BigDecimal("100")));
+        Rate rate = Rate.of(AMOUNT_100);
+        assertEquals(0, rate.value().compareTo(AMOUNT_100));
     }
 
     @Test
@@ -45,46 +53,54 @@ class RateTest {
 
     @Test
     void shouldAverageTwoRates() {
-        Rate result = Rate.of(new BigDecimal("3.50")).average(Rate.of(new BigDecimal("5.50")));
-        assertEquals(0, result.value().compareTo(new BigDecimal("4.50")));
+        Rate result = Rate.of(DECIMAL_3_50).average(Rate.of(DECIMAL_5_50));
+        assertEquals(0, result.value().compareTo(DECIMAL_4_50));
     }
 
     @Test
     void shouldBeGreaterThan() {
-        assertTrue(Rate.of(new BigDecimal("5.50")).isGreaterThan(Rate.of(new BigDecimal("3.50"))));
-        assertFalse(Rate.of(new BigDecimal("3.50")).isGreaterThan(Rate.of(new BigDecimal("5.50"))));
+        assertTrue(Rate.of(DECIMAL_5_50).isGreaterThan(Rate.of(DECIMAL_3_50)));
+        assertFalse(Rate.of(DECIMAL_3_50).isGreaterThan(Rate.of(DECIMAL_5_50)));
     }
 
     @Test
     void shouldBeLessThan() {
-        assertTrue(Rate.of(new BigDecimal("3.50")).isLessThan(Rate.of(new BigDecimal("5.50"))));
-        assertFalse(Rate.of(new BigDecimal("5.50")).isLessThan(Rate.of(new BigDecimal("3.50"))));
+        assertTrue(Rate.of(DECIMAL_3_50).isLessThan(Rate.of(DECIMAL_5_50)));
+        assertFalse(Rate.of(DECIMAL_5_50).isLessThan(Rate.of(DECIMAL_3_50)));
     }
 
     @Test
     void shouldBeEqualValueWhenSameValue() {
-        assertTrue(Rate.of(new BigDecimal("5.25")).equalsValue(Rate.of(new BigDecimal("5.250"))));
+        assertTrue(Rate.of(DECIMAL_5_25).equals(Rate.of(DECIMAL_5_250)));
     }
 
     @Test
     void shouldNotBeEqualValueWhenOtherIsNull() {
-        assertFalse(Rate.of(new BigDecimal("5.25")).equalsValue(null));
+        assertFalse(Rate.of(DECIMAL_5_25).equals(null));
     }
 
     @Test
     void shouldNotBeEqualValueWhenDifferentValue() {
-        assertFalse(Rate.of(new BigDecimal("5.25")).equalsValue(Rate.of(new BigDecimal("6.00"))));
+        assertFalse(Rate.of(DECIMAL_5_25).equals(Rate.of(DECIMAL_6_00)));
     }
 
     @Test
     void shouldHaveSameValueHashCodeForScaleDifferentValues() {
         assertEquals(
-            Rate.of(new BigDecimal("5.25")).valueHashCode(),
-            Rate.of(new BigDecimal("5.250")).valueHashCode());
+            Rate.of(DECIMAL_5_25).hashCode(),
+            Rate.of(DECIMAL_5_250).hashCode());
+    }
+
+    @Test
+    void equalsAndHashCodeShouldBeScaleInsensitiveLikeEqualsValue() {
+        assertEquals(Rate.of(DECIMAL_5_25), Rate.of(DECIMAL_5_250));
+        assertEquals(
+            Rate.of(DECIMAL_5_25).hashCode(),
+            Rate.of(DECIMAL_5_250).hashCode());
     }
 
     @Test
     void shouldToStringWithPercentSuffix() {
-        assertEquals("5.25%", Rate.of(new BigDecimal("5.25")).toString());
+        assertEquals("5.25%", Rate.of(DECIMAL_5_25).toString());
     }
 }

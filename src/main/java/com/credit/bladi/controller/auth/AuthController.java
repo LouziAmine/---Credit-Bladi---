@@ -4,6 +4,7 @@ import static com.credit.bladi.controller.auth.mapper.AuthControllerMapper.toAut
 import static com.credit.bladi.controller.auth.mapper.AuthControllerMapper.toUser;
 
 import com.credit.bladi.config.security.CookieTokenHelper;
+import com.credit.bladi.config.web.ClientIpResolver;
 import com.credit.bladi.controller.dto.auth.request.LoginRequestDTO;
 import com.credit.bladi.controller.dto.auth.request.RegisterRequestDTO;
 import com.credit.bladi.controller.dto.auth.response.AuthUserResponseDTO;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController implements IAuthController {
-
     private final IAuthService authService;
     private final CookieTokenHelper cookieTokenHelper;
 
@@ -46,8 +46,9 @@ public class AuthController implements IAuthController {
     @Override
     @PostMapping("/login")
     public ResponseEntity<AuthUserResponseDTO> login(@Valid @RequestBody LoginRequestDTO dto,
+                                                     HttpServletRequest request,
                                                      HttpServletResponse response) {
-        AuthLoginResult result = authService.login(toUser(dto));
+        AuthLoginResult result = authService.login(toUser(dto), ClientIpResolver.resolve(request));
         setAuthCookies(response, result);
         return ResponseEntity.ok(toAuthUserResponseDTO(result));
     }

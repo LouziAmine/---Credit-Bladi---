@@ -8,7 +8,6 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 public class CreditPage<T> implements Serializable {
-
     private List<T> items;
 
     private int currentPage;
@@ -59,9 +58,17 @@ public class CreditPage<T> implements Serializable {
         this.total = total;
     }
 
-    public static <T> CreditPage<T> empty() {
+    public static <T> CreditPage<T> empty(int currentPage, int size) {
+        return of(new ArrayList<>(), currentPage, size, 0);
+    }
+
+    public static <T> CreditPage<T> of(List<T> items, int currentPage, int size, long total) {
         CreditPage<T> page = new CreditPage<>();
-        page.setItems(new ArrayList<>());
+        page.setItems(items);
+        page.setCurrentPage(currentPage);
+        page.setLastPage(size > 0 ? (int) Math.ceil((double) total / size) : 0);
+        page.setSize(size);
+        page.setTotal((int) total);
         return page;
     }
 

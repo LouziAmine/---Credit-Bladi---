@@ -5,7 +5,6 @@ import java.math.RoundingMode;
 import java.util.Objects;
 
 public record Rate(BigDecimal value) {
-
     private static final BigDecimal MAX_RATE = BigDecimal.valueOf(100);
 
     public Rate {
@@ -23,6 +22,7 @@ public record Rate(BigDecimal value) {
     }
 
     public Rate average(Rate other) {
+        Objects.requireNonNull(other, "other cannot be null");
         return new Rate(
             value.add(other.value).divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP)
         );
@@ -36,11 +36,13 @@ public record Rate(BigDecimal value) {
         return value.compareTo(other.value) < 0;
     }
 
-    public boolean equalsValue(Rate other) {
-        return other != null && value.compareTo(other.value) == 0;
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof Rate other && value.compareTo(other.value) == 0;
     }
 
-    public int valueHashCode() {
+    @Override
+    public int hashCode() {
         return value.stripTrailingZeros().hashCode();
     }
 

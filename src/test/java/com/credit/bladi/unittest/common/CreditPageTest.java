@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.common;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_10;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -11,7 +13,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CreditPageTest {
-
     @Test
     void shouldGetItemsAsEmptyWhenNotSet() {
         CreditPage<String> page = new CreditPage<>();
@@ -31,7 +32,7 @@ class CreditPageTest {
 
     @Test
     void shouldBuildEmptyPage() {
-        CreditPage<String> page = CreditPage.empty();
+        CreditPage<String> page = CreditPage.empty(1, 20);
 
         assertNotNull(page);
         assertTrue(page.getItems().isEmpty());
@@ -83,7 +84,7 @@ class CreditPageTest {
     @Test
     void shouldNotBeEqualToDifferentType() {
         CreditPage<String> page = new CreditPage<>();
-        assertFalse(page.equals("other"));
+        assertFalse(page.equals(USER_OTHER));
     }
 
     @Test
@@ -96,6 +97,6 @@ class CreditPageTest {
         String str = page.toString();
 
         assertTrue(str.contains("1"));
-        assertTrue(str.contains("10"));
+        assertTrue(str.contains(TEXT_10));
     }
 }

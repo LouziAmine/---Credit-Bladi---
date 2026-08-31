@@ -1,4 +1,4 @@
-Feature: GET /api/v1/audit-log — access restrictions
+Feature: GET /api/v1/audit-log: access restrictions
 
   Background:
     * url baseUrl

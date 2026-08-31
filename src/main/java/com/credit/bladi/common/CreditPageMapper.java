@@ -3,7 +3,6 @@ package com.credit.bladi.common;
 import java.util.function.Function;
 
 public final class CreditPageMapper {
-
     private CreditPageMapper() {
     }
 

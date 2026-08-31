@@ -5,9 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-
 public final class TokenHasher {
-
     private TokenHasher() {
     }
 

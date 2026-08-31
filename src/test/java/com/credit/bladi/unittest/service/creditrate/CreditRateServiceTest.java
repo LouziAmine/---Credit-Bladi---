@@ -1,5 +1,9 @@
 package com.credit.bladi.unittest.service.creditrate;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_14_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_6_00;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
@@ -7,15 +11,15 @@ import static org.mockito.Mockito.when;
 
 import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.exception.CreditRateException;
+import com.credit.bladi.model.creditrate.CreditRateModel;
+import com.credit.bladi.model.creditrate.CreditRatePatchResult;
 import com.credit.bladi.model.enums.CspCode;
-import com.credit.bladi.model.simulation.CreditRateModel;
-import com.credit.bladi.model.simulation.CreditRatePatchResult;
+import com.credit.bladi.model.parameters.RegulatoryLimits;
 import com.credit.bladi.model.vo.Rate;
 import com.credit.bladi.repository.creditrate.ICreditRateRepository;
 import com.credit.bladi.service.audit.IAuditService;
 import com.credit.bladi.service.creditrate.CreditRateService;
 import com.credit.bladi.service.security.ICurrentActorProvider;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +30,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class CreditRateServiceTest {
-
     @Mock
     private ICreditRateRepository repository;
 
@@ -40,7 +43,8 @@ class CreditRateServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CreditRateService(repository, auditService, currentActorProvider);
+        service = new CreditRateService(repository, auditService, currentActorProvider,
+            new RegulatoryLimits(Rate.of(DECIMAL_14_00)));
     }
 
     @Test
@@ -81,18 +85,18 @@ class CreditRateServiceTest {
     void shouldDelegatePatchParametersToRepositoryAndAuditTheChange() {
         CreditRateModel patch = CreditRateModel.getBuilder()
             .id(1L)
-            .rateMax(Rate.of(new BigDecimal("6.00")))
+            .rateMax(Rate.of(DECIMAL_6_00))
             .build();
         CreditRateModel before = CreditRateModel.getBuilder()
             .id(1L)
-            .rateMax(Rate.of(new BigDecimal("5.00")))
+            .rateMax(Rate.of(DECIMAL_5_00))
             .build();
         CreditRateModel after = CreditRateModel.getBuilder()
             .id(1L)
-            .rateMax(Rate.of(new BigDecimal("6.00")))
+            .rateMax(Rate.of(DECIMAL_6_00))
             .build();
         when(repository.patchParameters(patch)).thenReturn(new CreditRatePatchResult(before, after));
-        when(currentActorProvider.getCurrentUsername()).thenReturn("jdoe");
+        when(currentActorProvider.getCurrentUsername()).thenReturn(USER_JDOE);
 
         CreditRateModel result = service.patchParameters(patch);
 

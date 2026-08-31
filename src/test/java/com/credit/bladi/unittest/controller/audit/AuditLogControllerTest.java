@@ -1,5 +1,6 @@
 package com.credit.bladi.unittest.controller.audit;
 
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -25,7 +26,6 @@ import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
 class AuditLogControllerTest {
-
     @Mock
     private IAuditService auditService;
 
@@ -40,7 +40,7 @@ class AuditLogControllerTest {
     void shouldReturn200WithPageOfAuditLogEntries() {
         AuditLogModel model = AuditLogModel.getBuilder()
             .id(1L)
-            .username("jdoe")
+            .username(USER_JDOE)
             .action(AuditAction.LOGIN)
             .performedAt(LocalDateTime.now())
             .build();
@@ -52,19 +52,19 @@ class AuditLogControllerTest {
         page.setTotal(1);
         when(auditService.getAuditLog(1, 20)).thenReturn(page);
 
-        ResponseEntity<CreditPage<AuditLogResponseDTO>> result = controller.getAuditLog(1, 20);
+        ResponseEntity<CreditPage<AuditLogResponseDTO>> result = controller.getAuditLog(1, 20, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
         assertEquals(1, result.getBody().getItems().size());
-        assertEquals("jdoe", result.getBody().getItems().get(0).getUsername());
+        assertEquals(USER_JDOE, result.getBody().getItems().get(0).username());
     }
 
     @Test
     void shouldDelegateGetAuditLogToService() {
         when(auditService.getAuditLog(anyInt(), anyInt())).thenReturn(new CreditPage<>());
 
-        controller.getAuditLog(2, 10);
+        controller.getAuditLog(2, 10, null, null);
 
         verify(auditService).getAuditLog(eq(2), eq(10));
     }

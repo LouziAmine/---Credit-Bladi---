@@ -1,4 +1,4 @@
-Feature: GET /api/v1/bam-parameters — happy path
+Feature: GET /api/v1/bam-parameters: happy path
 
   Background:
     * url baseUrl
@@ -16,7 +16,7 @@ Feature: GET /api/v1/bam-parameters — happy path
     And match response.items[0] ==
       """
       {
-        "id": 1,
+        "id": '#uuid',
         "processingFeesRatio": 0.0030,
         "minProcessingFees": 3000.00,
         "maxProcessingFees": 6000.00,

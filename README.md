@@ -1,216 +1,168 @@
 # Credit Bladi
 
+[![Backend CI/CD](https://github.com/LouziAmine/---Credit-Bladi---/actions/workflows/ci-cd.yml/badge.svg?branch=release%2F2.1.0)](https://github.com/LouziAmine/---Credit-Bladi---/actions/workflows/ci-cd.yml)
 ![Java](https://img.shields.io/badge/Java-25-blue?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-brightgreen?logo=springboot&logoColor=white)
 ![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)
-![Code Style](https://img.shields.io/badge/code%20style-google--java--style-blueviolet)
-![Tests](https://img.shields.io/badge/tests-JUnit%20%7C%20Karate%20%7C%20Gatling-orange)
 
-Moroccan mortgage credit simulator built with Spring Boot 4, compliant with Bank Al-Maghrib (BAM) regulatory rules.
+The API of Credit Bladi, a Moroccan credit platform built on Bank Al-Maghrib (BAM) rules. It covers public
+simulations (individual mortgage, conventional or Mourabaha, and company investment loans), the bank's
+instruction workflow up to the committee decision, the credit file after approval (schedule, payments, late
+interest, early repayment) and the client portal. The web front end lives in
+[---Bladi-Credit-Portal---](https://github.com/LouziAmine/---Bladi-Credit-Portal---).
 
-## Table of Contents
+> MVP. What is not built yet is listed in [Known limitations](docs/architecture.md#known-limitations).
 
-- [Overview](#overview)
-- [Simulation Workflow & Business Domain](docs/business-workflow.md)
-- [Tech Stack](#tech-stack)
-- [Documentation](#documentation)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Environment variables](#environment-variables)
-  - [Run locally (dev profile: H2 in-memory)](#run-locally-dev-profile-h2-in-memory)
-  - [Quick launcher script](#quick-launcher-script)
-  - [Swagger UI](#swagger-ui)
-  - [H2 Console (dev only)](#h2-console-dev-only)
-  - [Logging](#logging)
-- [Configuration Profiles](#configuration-profiles)
-  - [Required environment variables](#required-environment-variables)
-- [Security Model](#security-model)
-  - [Token expiration defaults](#token-expiration-defaults)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+## Quick Start
 
-## Overview
+| Tool | Version | Notes |
+|---|---|---|
+| Java | 25 | Maven is not needed: `./mvnw` downloads it |
+| Docker | Compose v2.24+ | PostgreSQL, ClamAV and Mailpit, or the whole stack |
+| Node.js | 22.22+ or 24.15+ | Only for the front end |
 
-Credit Bladi computes mortgage loan simulations for two financing products: a **Conventional**
-interest-based mortgage and a **Mourabaha** (Sharia-compliant, participative) financing. Pricing
-depends on the applicant's professional status. Each professional category (employee, civil
-servant, freelancer, professional, retired) has its own BAM-regulated rate calculation strategy for
-Conventional loans; Mourabaha financing applies a single bank-wide profit margin and VAT rate
-regardless of profile. BAM parameters, credit rates, and Mourabaha parameters are stored in the
-database and cached in-process.
+The `dev` profile needs no configuration file: a fresh clone starts as is.
 
-For the full business explanation (the 4 eligibility checks, CSP profiles, who can do what), see
-[Simulation Workflow & Business Domain](docs/business-workflow.md).
+**Everything in Docker** (Linux, macOS, Windows). Clone both repositories side by side:
 
-## Tech Stack
+```bash
+git clone https://github.com/LouziAmine/---Credit-Bladi---.git
+git clone https://github.com/LouziAmine/---Bladi-Credit-Portal---.git
+cd ./---Credit-Bladi---
+docker compose --profile app up -d --build
+```
 
-| Layer | Technology |
+The first build downloads every dependency and ClamAV's virus definitions: allow several minutes and about
+3 GB of free memory.
+
+**Apps on the machine** (faster to iterate):
+
+```bash
+docker compose up -d                                   # PostgreSQL, ClamAV, Mailpit
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev  # API on :8080
+
+cd ../---Bladi-Credit-Portal---
+npm ci && npm start                                    # portal on :4200
+```
+
+| | URL |
 |---|---|
-| Runtime | Java 25, Spring Boot 4.0.6 |
-| Security | Spring Security, JJWT 0.12.6 (JWT in HttpOnly cookies) |
-| Persistence | Spring Data JPA, Liquibase, H2 (dev) |
-| Cache | Caffeine (30-min TTL) |
-| API Docs | SpringDoc OpenAPI 3.0.2 |
-| Tests | JUnit 5, Mockito, Karate BDD, Gatling |
-| Code Style | Checkstyle (Google Java Style) |
+| Portal | `http://localhost:4200` |
+| Swagger UI | `http://localhost:8080/swagger/credit-bladi/v3/swagger-ui.html` |
+| Health | `http://localhost:8080/actuator/health` |
+| Mailpit (e-mails and SMS in dev) | `http://localhost:8025` |
+| PostgreSQL | `localhost:5432`, database `bladidb`, user and password `bladi` |
+
+Demo login: `admin` / `admin123`. On the `dev` profile the database is rebuilt from scratch on every start
+(schema, reference data, demo users).
+
+### Troubleshooting
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `release version 25 not supported` | Java older than 25 | Install JDK 25 (`java -version`) |
+| `Port 8080 was already in use` | Another app on 8080 | Stop it, or add `-Dspring-boot.run.arguments=--server.port=8081` and point the front end's `apiUrl` to it |
+| `Connection to localhost:5432 refused` | PostgreSQL not started | `docker compose up -d`, then wait for `docker compose ps` to show it `healthy` |
+| Upload refused, antivirus unavailable | ClamAV is still loading its definitions | Wait a few minutes after the first start |
+| No e-mail or SMS | In dev they go to Mailpit | Open `http://localhost:8025` |
+| Docker build killed | Not enough memory | Give Docker at least 4 GB |
+| Staging or prod exits at startup | A required variable is missing | The log names it; see [Configuration](#configuration) |
 
 ## Documentation
 
-Detailed docs live in [`docs/`](docs/):
-
-| Doc | Covers |
-|---|---|
-| [Simulation Workflow & Business Domain](docs/business-workflow.md) | What a simulation is, the two financing products, the 4 eligibility checks, CSP profiles, who can do what |
-| [Architecture & Design Patterns](docs/architecture.md) | Layered architecture, real package tree, Domain-Driven Design, the 12 GoF/PoEAA patterns used |
-| [API Reference](docs/api.md) | Endpoint table, access levels, error handling / exception hierarchy |
-| [Testing & Quality Reports](docs/testing.md) | How to run each test suite, reference results, and annotated screenshots of the JaCoCo, Karate, Gatling, Dependency-Check, ZAP and Swagger reports |
-
-## Getting Started
-
-### Prerequisites
-
-- Java 25
-- Maven 3.9+
-
-### Environment variables
-
-Copy `.env.template` to `.env.local` (gitignored, never committed) and fill in real values:
-
-```bash
-cp .env.template .env.local
-```
-
-Spring loads `.env` then `.env.local` automatically at startup (`spring.config.import` in
-`application.properties`); no extra dependency, no need to `export` anything manually.
-`.env.local` overrides `.env` if both exist.
-
-### Run locally (dev profile: H2 in-memory)
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-The application starts on `http://localhost:8080`.
-
-### Quick launcher script
-
-`./run-tests.sh` is an interactive menu that wraps all of the above: the fastest way to get
-started without memorizing Maven flags:
-
-```bash
-./run-tests.sh
-```
-
-| Option | Does |
-|---|---|
-| 1 | Unit tests (JUnit/Mockito), no app needed |
-| 2 | Karate integration tests, starts the app automatically |
-| 3 | Gatling performance tests, asks to auto-start the app if it's not already running |
-| 4 | Karate then Gatling, back to back |
-| 5 | Checkstyle (Google Java Style) |
-| 6 | Start the app in **dev** mode (H2, Swagger, DEBUG logs) |
-| 7 | Start the app in dev mode with remote debug open on port 5005 |
-| 8 | OWASP Dependency-Check (SCA scan) |
-| 9 | OWASP ZAP (DAST scan, requires Docker + the app running) |
-
-Option **6** is the one-command equivalent of the `./mvnw spring-boot:run` command above. Reference
-results and annotated screenshots for every option above are in [Testing & Quality
-Reports](docs/testing.md).
-
-### Swagger UI
-
-```
-http://localhost:8080/swagger/credit-bladi/v3/swagger-ui.html
-```
-
-### H2 Console (dev only)
-
-```
-http://localhost:8080/h2-console
-JDBC URL : jdbc:h2:mem:bladidb
-Username : sa
-Password : (empty)
-```
-
-### Logging
-
-Configured in `src/main/resources/log4j2-spring.xml`. Every request is logged to **three**
-sinks at once:
-
-| Sink | Location | Format |
+| Document | For | Content |
 |---|---|---|
-| Console | stdout | human-readable, same pattern as the file sink |
-| File | `logs/credit-bladi.log` | human-readable text, one line per event |
-| JSON file | `logs/credit-bladi.json` | structured JSON, one line per event, for log aggregators (ELK, Loki, etc.) |
+| [Architecture at a Glance](docs/c4-architecture.md) | New developers, start here | System context, containers, back and front layers, [dependency graph](docs/dependency-graph.md) |
+| [Feature Flows](docs/flows/README.md) | Developers | One sequence diagram per feature, from the click to the database and back |
+| [Architecture](docs/architecture.md) | Developers | Transactions, package map, DDD, patterns, banking safeguards, known limitations |
+| [Adding a Feature](docs/adding-a-feature.md) | Developers | Checklist for a new feature, on a real example |
+| [API](docs/api.md) | Integrators | Endpoints, access rules, error format |
+| [End-to-End Journeys](docs/end-to-end-flows.md) | Everyone | Business journeys with every success and error case |
+| [Mortgage Credit](docs/mortgage-credit-workflow.md) | Business | Conventional and Mourabaha, eligibility, CSP profiles, the mortgage workflow |
+| [Enterprise Credit](docs/enterprise-credit-workflow.md) | Business | Enterprise types, eligibility, the instruction steps, committee, documents, credit file |
+| [Glossary](docs/glossary.md) | Everyone | Business words and the code names behind them |
+| [Testing](docs/testing.md) | Developers, QA | How to run each suite, current results, reports |
+| [Deployment](docs/deployment.md) | DevOps | CI/CD pipeline, Docker images, environment variables |
 
-`logs/` is created at runtime and is git-ignored (`.gitignore:33`), so it never gets pushed and
-nothing under it shows up in the repo for a new developer. Both files roll over daily or at 10 MB,
-whichever comes first, and are gzip-archived to `logs/archive/` (kept up to 90 rotations).
+## Tech stack
 
-Every log line belonging to the same HTTP request carries the same `requestId` (propagated via
-MDC by `RequestContextInterceptor`), so `grep <requestId> logs/credit-bladi.log` reconstructs the
-full request lifecycle (request in, internal repository/service calls, audit trail, response out)
-across `INFO` and `DEBUG` lines alike. The root logger defaults to `INFO`; `com.credit.bladi` to
-`DEBUG` (both overridable via `logging.level.root` / `logging.level.com.credit.bladi`).
+| | |
+|---|---|
+| Runtime | Java 25, Spring Boot 4.0.6 |
+| Security | Spring Security, JWT (JJWT) in `HttpOnly` cookies |
+| Persistence | Spring Data JPA, Liquibase, PostgreSQL 16 (H2 for the test suites) |
+| Cache | Caffeine |
+| Notifications | Server-Sent Events, e-mail (Spring Mail), SMS through a swappable gateway |
+| Batch | Spring Batch and Apache POI (Excel import) |
+| Documents | Apache Tika (content check), ClamAV (antivirus), AES-256-GCM encryption at rest |
+| API docs | SpringDoc OpenAPI |
+| Tests | JUnit 5, Mockito, ArchUnit, Karate, Gatling |
+| Code style | Checkstyle (Google Java Style) |
 
-Demonstration below: `ls -la logs/`, then a real `POST /api/v1/simulation` call traced end-to-end
-through both the plain-text and JSON sinks via its `requestId`:
+## Configuration
 
-![Logging demonstration](docs/screenshots/logging-demo.png)
-
-Archived rotations, one gzip pair (`.log.gz` + `.json.gz`) per day at midnight, or more often if a
-day's traffic hits the 10 MB size trigger first: 79 files / 27 MB accumulated since 2026-06-19 in
-this environment:
-
-![Log archive rotation demonstration](docs/screenshots/logging-archive-demo.png)
-
-## Configuration Profiles
-
-| Profile | Database | JWT Secret | Swagger |
+| Profile | Database | Secrets | Swagger |
 |---|---|---|---|
-| `dev` | H2 in-memory | `JWT_SECRET` (from `.env`/`.env.local`) | Public |
-| `staging` | Env vars required | `JWT_SECRET` env var | Public (`swagger.public=true`, test environment only) |
-| `prod` | Env vars required | `JWT_SECRET` env var | Restricted |
+| `dev` | Local PostgreSQL from `docker-compose.yml` | Local-only defaults, overridable in `.env.local` | Public |
+| `staging` | From environment variables | Required | Public |
+| `prod` | From environment variables | Required | Restricted |
 
-No profile ships a hardcoded secret: the app refuses to start if `JWT_SECRET` is missing.
+Spring reads `.env` and then `.env.local` at startup (copy `.env.template`). Staging and prod refuse to start
+when one of these is missing:
 
-### Required environment variables
+| Variable | Notes |
+|---|---|
+| `JWT_SECRET` | `openssl rand -base64 32` |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL |
+| `CORS_ALLOWED_ORIGIN` | Portal URL (prod) |
+| `DOCUMENT_STORAGE_PATH`, `DOCUMENT_ENCRYPTION_KEY` | Where documents are written, and their AES key |
+| `CLAMAV_HOST`, `CLAMAV_PORT` | Antivirus |
+| `PAYMENT_BENEFICIARY_RIB` | The account clients pay into, a valid Moroccan RIB |
+| `SMS_GATEWAY_PROVIDER` | `http` (real gateway) or `mailpit` |
+| `BAM_VERIFICATION_PROVIDER` | `mock` until a real provider is connected |
+
+Business settings with defaults: `MAX_ANNUAL_RATE` (legal ceiling, 14.00), `MAX_RATE_SIMULATION_BASIS`
+(`NOMINAL` or `TEG`), `LATE_INTEREST_MARGIN_POINTS` (2.00), and the `SMTP_*` and `SMS_GATEWAY_*` settings in
+`.env.template`. The deployment guide lists them all: [Deployment](docs/deployment.md).
+
+## Logs
+
+`src/main/resources/log4j2-spring.xml` writes every event to the console, to `logs/credit-bladi.log` (text) and
+to `logs/credit-bladi.json` (one JSON object per line, for ELK or Loki). Files roll daily or at 10 MB into
+`logs/archive/`. Every line of a request carries the same `requestId`, so one `grep` rebuilds a whole call.
+E-mails, phones and RIBs are masked. A real simulation request:
 
 ```
-JWT_SECRET             # all profiles, see .env.template, generate with: openssl rand -base64 32
-DB_URL                 # staging/prod
-DB_USERNAME            # staging/prod
-DB_PASSWORD            # staging/prod
-CORS_ALLOWED_ORIGIN    # prod
+[INFO ] [af68c0e5-...] 21:44:35,705 RequestLoggerInterceptor : INCOMING REQUEST : METHOD=POST, URI=/api/v1/mortgage-credit
+[INFO ] [af68c0e5-...] 21:44:35,706 MortgageCreditService    : Simulate - amount=500000 MAD, duration=240, productType=CONVENTIONAL
+[INFO ] [af68c0e5-...] 21:44:35,718 WorkflowEngineService    : createDemand - reference=DEM-42D28F5CF5BD, workflowId=3, firstStep=CLASSIFICATION_STEP
+[DEBUG] [af68c0e5-...] 21:44:35,719 AuditLogRepository       : save - action=SIMULATION
+[INFO ] [af68c0e5-...] 21:44:35,724 RequestLoggerInterceptor : OUTGOING RESPONSE : METHOD=POST, URI=/api/v1/mortgage-credit, STATUS=200
 ```
 
-## Security Model
+## Security
 
-- JWT access token stored in an **HttpOnly cookie** (not localStorage, XSS safe)
-- Refresh token rotated on every use
-- Revoked tokens persisted in database (blacklist on logout)
-- Stateless Spring Security session (`SessionCreationPolicy.STATELESS`)
-- CORS restricted to `security.cors.allowed-origin`
-- Rate limiting filter applied globally
+- Access and refresh tokens in `HttpOnly`, `SameSite=Strict` cookies (`Secure` outside dev). The access token
+  lasts 24 h in dev and 15 min in staging and prod; the refresh token lasts 7 days and is rotated on every
+  use, and a reused refresh token revokes every session of the user.
+- Tokens are stored hashed; logged-out access tokens are kept on a revocation list.
+- Authorities are reloaded from the database on every request; the session is stateless.
+- Rate limits on login, register, refresh, logout and both simulations; an account is locked for a while
+  after repeated failed logins.
+- Four-eyes rule on committee decisions, grade and team per step, no self-promotion, mandatory audit of
+  every credit decision, payment, parameter, role and assignment change.
+- Personal data masked in logs; uploaded documents scanned by ClamAV and encrypted at rest.
 
-### Token expiration defaults
+## Development
 
-| Token | Default | Prod override |
-|---|---|---|
-| Access token | 24 hours | Set shorter via `security.jwt.expiration-ms` |
-| Refresh token | 7 days | Set via `security.jwt.refresh-expiration-ms` |
+`./run-tests.sh` is an interactive menu over the usual commands: unit tests, Karate, Gatling, Checkstyle,
+starting the app (with or without remote debug on `:5005`), Dependency-Check and ZAP. Details in
+[Testing](docs/testing.md).
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the branching workflow, the
-tests to run before opening a pull request, and the code style enforced by Checkstyle. This
-project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE).
-
-## Contact
-
-**Amine Louzi** (louzi.amine.pro.pro@gmail.com)
+[Apache License 2.0](LICENSE). Contact: Amine Louzi (louzi.amine.pro.pro@gmail.com).

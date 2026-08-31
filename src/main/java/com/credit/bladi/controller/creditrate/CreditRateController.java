@@ -9,7 +9,7 @@ import com.credit.bladi.controller.dto.creditrate.request.PatchCreditRateDTO;
 import com.credit.bladi.controller.dto.creditrate.response.CreditRateResponseDTO;
 import com.credit.bladi.service.creditrate.ICreditRateService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/credit-rates")
 @PreAuthorize("hasRole('MANAGER')")
 public class CreditRateController implements ICreditRateController {
-
     private final ICreditRateService creditRateService;
 
     public CreditRateController(ICreditRateService creditRateService) {
@@ -45,18 +44,19 @@ public class CreditRateController implements ICreditRateController {
 
     @Override
     @GetMapping("/{id}")
-    public ResponseEntity<CreditRateResponseDTO> getById(
-            @Min(value = 1, message = "INVALID_ID: id must be a positive number.") @PathVariable Long id) {
-        return ResponseEntity.ok(toResponseDTO(creditRateService.getById(id)));
+    public ResponseEntity<CreditRateResponseDTO> getById(@PathVariable UUID id) {
+        Long resolvedId = creditRateService.resolveCreditRateId(id);
+        return ResponseEntity.ok(toResponseDTO(creditRateService.getById(resolvedId)));
     }
 
     @Override
     @PatchMapping("/{id}")
     public ResponseEntity<Void> patchCreditRate(
-        @Min(value = 1, message = "INVALID_ID: id must be a positive number.") @PathVariable Long id,
+        @PathVariable UUID id,
         @Valid @RequestBody PatchCreditRateDTO dto
     ) {
-        creditRateService.patchParameters(toDomain(id, dto));
+        Long resolvedId = creditRateService.resolveCreditRateId(id);
+        creditRateService.patchParameters(toDomain(resolvedId, dto));
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

@@ -1,10 +1,11 @@
 package com.credit.bladi.service.auth;
 
-public interface ITokenService {
+import java.util.Optional;
 
+public interface ITokenService {
     String generateToken(String username, String role);
 
-    String extractUsername(String token);
+    Optional<String> findUsername(String token);
 
     boolean isTokenValid(String token, String username);
 
