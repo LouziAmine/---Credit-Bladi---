@@ -14,13 +14,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
-
     private static final Logger LOGGER = LogManager.getLogger(JwtAuthFilter.class);
 
     private final ITokenService tokenService;
@@ -42,7 +42,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = cookieTokenHelper.extractToken(request);
         if (token != null) {
             try {
-                String username = tokenService.extractUsername(token);
+                String username = tokenService.findUsername(token).orElse(null);
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                     if (tokenService.isTokenValid(token, userDetails.getUsername())) {
@@ -52,7 +52,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         SecurityContextHolder.getContext().setAuthentication(auth);
                     }
                 }
-            } catch (Exception e) {
+            } catch (UsernameNotFoundException e) {
                 LOGGER.warn("Rejected token from [{}]: {}", ClientIpResolver.resolve(request), e.getMessage());
             }
         }

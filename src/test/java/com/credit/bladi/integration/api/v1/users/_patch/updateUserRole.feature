@@ -1,7 +1,13 @@
-Feature: PATCH /api/v1/users/{id}/role — happy path (MANAGER only)
+Feature: PATCH /api/v1/users/{id}/role: happy path (MANAGER only)
 
   Background:
     * url baseUrl
+    Given path 'api', 'v1', 'users'
+    And headers authHeaders
+    And param size = 50
+    When method GET
+    Then status 200
+    * def adminId = karate.jsonPath(response, "$.items[?(@.username=='admin')]")[0].id
 
   Scenario: Another MANAGER can update admin role idempotently returns 204
     Given path 'api', 'v1', 'users'
@@ -18,7 +24,7 @@ Feature: PATCH /api/v1/users/{id}/role — happy path (MANAGER only)
     Then status 200
     And def secondMgrToken = 'Bearer ' + responseCookies['cb_access_token'].value
 
-    Given path 'api', 'v1', 'users', 1, 'role'
+    Given path 'api', 'v1', 'users', adminId, 'role'
     And header Authorization = secondMgrToken
     And header Content-Type = 'application/json'
     And request { role: 'MANAGER' }
@@ -40,14 +46,14 @@ Feature: PATCH /api/v1/users/{id}/role — happy path (MANAGER only)
     Then status 200
     And def tempManagerToken = 'Bearer ' + responseCookies['cb_access_token'].value
 
-    Given path 'api', 'v1', 'users', 1, 'role'
+    Given path 'api', 'v1', 'users', adminId, 'role'
     And header Authorization = tempManagerToken
     And header Content-Type = 'application/json'
     And request { role: 'CLIENT' }
     When method PATCH
     Then status 204
 
-    Given path 'api', 'v1', 'users', 1, 'role'
+    Given path 'api', 'v1', 'users', adminId, 'role'
     And header Authorization = tempManagerToken
     And header Content-Type = 'application/json'
     And request { role: 'MANAGER' }

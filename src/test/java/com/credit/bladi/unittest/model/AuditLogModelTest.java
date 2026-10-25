@@ -1,5 +1,10 @@
 package com.credit.bladi.unittest.model;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_LOGIN;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SUCCESS;
+import static com.credit.bladi.unittest.mock.data.MockContacts.IP_10_0_0_1;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -11,24 +16,23 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
 class AuditLogModelTest {
-
     @Test
     void shouldBuildWithAllFields() {
         LocalDateTime now = LocalDateTime.now();
         AuditLogModel model = AuditLogModel.getBuilder()
             .id(1L)
-            .username("jdoe")
+            .username(USER_JDOE)
             .action(AuditAction.LOGIN)
-            .ipAddress("10.0.0.1")
-            .details("SUCCESS")
+            .ipAddress(IP_10_0_0_1)
+            .details(CODE_SUCCESS)
             .performedAt(now)
             .build();
 
         assertEquals(1L, model.getId());
-        assertEquals("jdoe", model.getUsername());
+        assertEquals(USER_JDOE, model.getUsername());
         assertEquals(AuditAction.LOGIN, model.getAction());
-        assertEquals("10.0.0.1", model.getIpAddress());
-        assertEquals("SUCCESS", model.getDetails());
+        assertEquals(IP_10_0_0_1, model.getIpAddress());
+        assertEquals(CODE_SUCCESS, model.getDetails());
         assertEquals(now, model.getPerformedAt());
     }
 
@@ -40,8 +44,8 @@ class AuditLogModelTest {
 
     @Test
     void shouldBeEqualWhenSameId() {
-        AuditLogModel m1 = AuditLogModel.getBuilder().id(1L).username("jdoe").build();
-        AuditLogModel m2 = AuditLogModel.getBuilder().id(1L).username("other").build();
+        AuditLogModel m1 = AuditLogModel.getBuilder().id(1L).username(USER_JDOE).build();
+        AuditLogModel m2 = AuditLogModel.getBuilder().id(1L).username(USER_OTHER).build();
         assertEquals(m1, m2);
     }
 
@@ -62,7 +66,7 @@ class AuditLogModelTest {
     @Test
     void shouldNotBeEqualToDifferentType() {
         AuditLogModel model = AuditLogModel.getBuilder().id(1L).build();
-        assertFalse(model.equals("other"));
+        assertFalse(model.equals(USER_OTHER));
     }
 
     @Test
@@ -73,9 +77,9 @@ class AuditLogModelTest {
 
     @Test
     void shouldHaveToString() {
-        AuditLogModel model = AuditLogModel.getBuilder().id(1L).username("jdoe").action(AuditAction.LOGIN).build();
+        AuditLogModel model = AuditLogModel.getBuilder().id(1L).username(USER_JDOE).action(AuditAction.LOGIN).build();
         String str = model.toString();
-        assertTrue(str.contains("jdoe"));
-        assertTrue(str.contains("LOGIN"));
+        assertTrue(str.contains(USER_JDOE));
+        assertTrue(str.contains(CODE_LOGIN));
     }
 }

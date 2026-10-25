@@ -1,4 +1,4 @@
-Feature: GET /api/v1/audit-log — error cases
+Feature: GET /api/v1/audit-log: error cases
 
   Background:
     * url baseUrl

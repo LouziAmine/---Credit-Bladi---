@@ -14,23 +14,24 @@ import com.credit.bladi.model.auth.RefreshToken;
 import com.credit.bladi.model.enums.AuditAction;
 import com.credit.bladi.model.enums.UserRole;
 import com.credit.bladi.model.user.User;
+import com.credit.bladi.repository.DuplicateEntryException;
 import com.credit.bladi.repository.auth.IRefreshTokenRepository;
 import com.credit.bladi.repository.user.IUserRepository;
 import com.credit.bladi.service.audit.IAuditService;
+import com.credit.bladi.service.request.IRequestContext;
 import com.credit.bladi.service.security.ILoginAttemptStore;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService implements IAuthService {
-
     private static final Logger LOGGER = LogManager.getLogger(AuthService.class);
 
     private static final String DUMMY_PASSWORD_HASH =
@@ -50,13 +51,20 @@ public class AuthService implements IAuthService {
 
     private final long refreshExpirationMs;
 
+    private final IRequestContext requestContext;
+
+    private final Clock clock;
+
     public AuthService(IUserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        ITokenService tokenService,
                        IRefreshTokenRepository refreshTokenRepository,
                        IAuditService auditService,
                        ILoginAttemptStore loginAttemptStore,
-                       @Value("${security.jwt.refresh-expiration-ms}") long refreshExpirationMs) {
+                       @Value("${security.jwt.refresh-expiration-ms}") long refreshExpirationMs,
+                       IRequestContext requestContext,
+                       Clock clock) {
+        this.clock = clock;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
@@ -64,14 +72,15 @@ public class AuthService implements IAuthService {
         this.auditService = auditService;
         this.loginAttemptStore = loginAttemptStore;
         this.refreshExpirationMs = refreshExpirationMs;
+        this.requestContext = requestContext;
     }
 
     @Override
     @Transactional
-    public AuthLoginResult login(User credentials) {
+    public AuthLoginResult login(User credentials, String clientIp) {
         LOGGER.info("Login - username={}", credentials.getUsername());
         String username = credentials.getUsername();
-        if (loginAttemptStore.isLocked(username)) {
+        if (loginAttemptStore.isLocked(username, clientIp)) {
             auditService.log(username, AuditAction.LOGIN, "LOCKED");
             throw AuthException.of(ACCOUNT_LOCKED);
         }
@@ -79,11 +88,11 @@ public class AuthService implements IAuthService {
         String hashToVerify = found.map(User::getPassword).orElse(DUMMY_PASSWORD_HASH);
         boolean passwordMatches = passwordEncoder.matches(credentials.getPassword(), hashToVerify);
         if (found.isEmpty() || !passwordMatches) {
-            loginAttemptStore.recordFailure(username);
+            loginAttemptStore.recordFailure(username, clientIp);
             auditService.log(username, AuditAction.LOGIN, "FAILURE");
             throw AuthException.of(INVALID_CREDENTIALS);
         }
-        loginAttemptStore.reset(username);
+        loginAttemptStore.reset(username, clientIp);
         User user = found.get();
         String accessToken = tokenService.generateToken(user.getUsername(), user.getRole().name());
         String refreshToken = issueRefreshToken(user.getId());
@@ -100,8 +109,8 @@ public class AuthService implements IAuthService {
         }
         try {
             userRepository.save(buildUser(user, UserRole.CLIENT));
-        } catch (DataIntegrityViolationException e) {
-            throw AuthException.of(USERNAME_TAKEN);
+        } catch (DuplicateEntryException e) {
+            throw AuthException.of(USERNAME_TAKEN, e);
         }
         auditService.log(user.getUsername(), AuditAction.REGISTER, null);
     }
@@ -123,7 +132,7 @@ public class AuthService implements IAuthService {
             throw AuthException.of(REFRESH_TOKEN_REUSE_DETECTED);
         }
 
-        if (stored.isExpired()) {
+        if (stored.isExpiredAt(clock.millis())) {
             throw AuthException.of(REFRESH_TOKEN_EXPIRED);
         }
 
@@ -154,21 +163,13 @@ public class AuthService implements IAuthService {
         if (refreshToken != null) {
             refreshTokenRepository.revoke(refreshToken);
         }
-        String username = accessToken != null ? extractUsernameQuietly(accessToken) : null;
+        String username = accessToken != null ? tokenService.findUsername(accessToken).orElse(null) : null;
         auditService.log(username, AuditAction.LOGOUT, null);
-    }
-
-    private String extractUsernameQuietly(String token) {
-        try {
-            return tokenService.extractUsername(token);
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 
     private String issueRefreshToken(Long userId) {
         String token = UUID.randomUUID().toString();
-        long expiresAt = System.currentTimeMillis() + refreshExpirationMs;
+        long expiresAt = clock.millis() + refreshExpirationMs;
         refreshTokenRepository.save(token, userId, expiresAt);
         return token;
     }
@@ -178,6 +179,7 @@ public class AuthService implements IAuthService {
             .username(credentials.getUsername())
             .password(passwordEncoder.encode(credentials.getPassword()))
             .role(role)
+            .preferredLanguage(requestContext.getLanguage())
             .build();
     }
 }

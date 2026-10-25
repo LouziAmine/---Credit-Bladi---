@@ -1,4 +1,7 @@
 package com.credit.bladi.model.bam;
 
-public record BamParametersPatchResult(BamParametersModel before, BamParametersModel after) {
+import com.credit.bladi.model.parameters.VersionedPatchResult;
+
+public record BamParametersPatchResult(BamParametersModel before, BamParametersModel after)
+    implements VersionedPatchResult<BamParametersModel> {
 }

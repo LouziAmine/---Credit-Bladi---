@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserDetailsServiceAdapter implements UserDetailsService {
-
     private final IUserService userService;
 
     public UserDetailsServiceAdapter(IUserService userService) {

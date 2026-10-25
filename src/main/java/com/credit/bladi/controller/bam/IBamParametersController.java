@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "BAM Parameters Management", description = "Back-office APIs for updating BAM regulatory parameters")
 public interface IBamParametersController {
-
     @Operation(
         summary = "Returns all BAM parameters records (paginated)",
         description = "Allows the bank administrator to browse all BAM regulatory fee "
@@ -48,7 +48,7 @@ public interface IBamParametersController {
                     """))),
         @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Insufficient permissions — MANAGER role required",
+        @ApiResponse(responseCode = "403", description = "Insufficient permissions: MANAGER role required",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "500",
@@ -66,12 +66,12 @@ public interface IBamParametersController {
     ResponseEntity<CreditPage<BamParametersResponseDTO>> getAllParameters(
 
         @Parameter(description = "Page number (1-based)", name = "page", example = "1")
-        @Min(value = 1, message = "INVALID_PAGE: page must be greater or equal to 1.")
+        @Min(value = 1, message = "{validation.invalidPage}")
         @RequestParam(name = "page", defaultValue = "1", required = false) Integer page,
 
         @Parameter(description = "Page size (max 50)", name = "size", example = "20")
-        @Min(value = 1, message = "INVALID_SIZE: size must be between 1 and 50.")
-        @Max(value = 50, message = "INVALID_SIZE: size must be between 1 and 50.")
+        @Min(value = 1, message = "{validation.invalidSize}")
+        @Max(value = 50, message = "{validation.invalidSize}")
         @RequestParam(name = "size", defaultValue = "20", required = false) Integer size
     );
 
@@ -87,7 +87,7 @@ public interface IBamParametersController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Insufficient permissions — MANAGER role required",
+        @ApiResponse(responseCode = "403", description = "Insufficient permissions: MANAGER role required",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
@@ -115,9 +115,9 @@ public interface IBamParametersController {
                     """)))
     })
     ResponseEntity<BamParametersResponseDTO> getById(
-        @Parameter(description = "Identifier of the BAM parameters record.", example = "1")
-        @Min(value = 1, message = "INVALID_ID: id must be a positive number.")
-        @PathVariable Long id
+        @Parameter(description = "Identifier of the BAM parameters record.",
+            example = "3f2a9c1b-6e4d-4a2f-9c1b-6e4d4a2f9c1b")
+        @PathVariable UUID id
     );
 
     @Operation(
@@ -156,7 +156,7 @@ public interface IBamParametersController {
                     """))),
         @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Insufficient permissions — MANAGER role required",
+        @ApiResponse(responseCode = "403", description = "Insufficient permissions: MANAGER role required",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "409",
@@ -184,9 +184,9 @@ public interface IBamParametersController {
                     """)))
     })
     ResponseEntity<Void> patchParameters(
-        @Parameter(description = "Identifier of the BAM parameters record to update.", example = "1")
-        @Min(value = 1, message = "INVALID_ID: id must be a positive number.")
-        @PathVariable Long id,
+        @Parameter(description = "Identifier of the BAM parameters record to update.",
+            example = "3f2a9c1b-6e4d-4a2f-9c1b-6e4d4a2f9c1b")
+        @PathVariable UUID id,
         @Valid @RequestBody PatchBamParametersDTO dto
     );
 }

@@ -1,14 +1,17 @@
-Feature: GET /api/v1/audit-log — happy path
+Feature: GET /api/v1/audit-log: happy path
 
   Background:
     * url baseUrl
 
   Scenario: Get audit log with default pagination returns 200 with paginated result
-    Given path 'api', 'v1', 'simulation'
+    Given path 'api', 'v1', 'mortgage-credit'
     And headers publicHeaders
     And request
       """
       {
+        "applicantName": "Karim Benali",
+        "email": "karim.benali@example.ma",
+        "phone": "0612345678",
         "amount": 500000.00,
         "duration": 240,
         "cspCode": "SALA",
@@ -34,12 +37,14 @@ Feature: GET /api/v1/audit-log — happy path
     And match response.items[0] ==
       """
       {
-        "id": '#number',
+        "id": '#uuid',
         "username": '##string',
         "action": '#string',
         "ipAddress": '#string',
         "details": '##string',
-        "performedAt": '#string'
+        "performedAt": '#string',
+        "entityType": '##string',
+        "entityId": '##uuid'
       }
       """
 

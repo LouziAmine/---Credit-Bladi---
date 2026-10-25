@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RequestContextInterceptorTest {
-
     @Mock
     private HttpServletRequest request;
 

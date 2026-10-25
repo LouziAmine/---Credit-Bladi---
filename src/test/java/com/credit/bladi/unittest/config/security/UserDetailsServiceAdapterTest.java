@@ -1,5 +1,8 @@
 package com.credit.bladi.unittest.config.security;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_ROLE_MANAGER;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_ADMIN;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_UNKNOWN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -20,7 +23,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class UserDetailsServiceAdapterTest {
-
     @Mock
     private IUserService userService;
 
@@ -35,27 +37,27 @@ class UserDetailsServiceAdapterTest {
     void shouldLoadUserByUsernameWhenFound() {
         User user = User.getBuilder()
             .id(1L)
-            .username("admin")
+            .username(USER_ADMIN)
             .password("$2a$encodedpassword")
             .role(UserRole.MANAGER)
             .build();
-        when(userService.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(userService.findByUsername(USER_ADMIN)).thenReturn(Optional.of(user));
 
-        UserDetails userDetails = adapter.loadUserByUsername("admin");
+        UserDetails userDetails = adapter.loadUserByUsername(USER_ADMIN);
 
         assertNotNull(userDetails);
-        assertEquals("admin", userDetails.getUsername());
+        assertEquals(USER_ADMIN, userDetails.getUsername());
         assertEquals("$2a$encodedpassword", userDetails.getPassword());
         assertEquals(1, userDetails.getAuthorities().size());
-        assertEquals("ROLE_MANAGER",
+        assertEquals(CODE_ROLE_MANAGER,
             userDetails.getAuthorities().iterator().next().getAuthority());
     }
 
     @Test
     void shouldThrowUsernameNotFoundExceptionWhenUserNotFound() {
-        when(userService.findByUsername("unknown")).thenReturn(Optional.empty());
+        when(userService.findByUsername(USER_UNKNOWN)).thenReturn(Optional.empty());
 
         assertThrows(UsernameNotFoundException.class,
-            () -> adapter.loadUserByUsername("unknown"));
+            () -> adapter.loadUserByUsername(USER_UNKNOWN));
     }
 }

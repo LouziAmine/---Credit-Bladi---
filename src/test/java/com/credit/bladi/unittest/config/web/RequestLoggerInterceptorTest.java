@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.config.web;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_GET;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_POST;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -14,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RequestLoggerInterceptorTest {
-
     @Mock
     private HttpServletRequest request;
 
@@ -30,8 +31,8 @@ class RequestLoggerInterceptorTest {
 
     @Test
     void shouldReturnTrueForNonActuatorPath() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/v1/simulation");
-        when(request.getMethod()).thenReturn("POST");
+        when(request.getRequestURI()).thenReturn("/api/v1/mortgage-credit");
+        when(request.getMethod()).thenReturn(CODE_POST);
         when(request.getQueryString()).thenReturn(null);
 
         boolean result = interceptor.preHandle(request, response, new Object());
@@ -60,7 +61,7 @@ class RequestLoggerInterceptorTest {
     @Test
     void shouldReturnTrueForPathWithQueryString() throws Exception {
         when(request.getRequestURI()).thenReturn("/api/v1/bam");
-        when(request.getMethod()).thenReturn("GET");
+        when(request.getMethod()).thenReturn(CODE_GET);
         when(request.getQueryString()).thenReturn("page=1&size=10");
 
         boolean result = interceptor.preHandle(request, response, new Object());
@@ -70,8 +71,8 @@ class RequestLoggerInterceptorTest {
 
     @Test
     void shouldLogOutgoingResponseWithDurationWhenStartTimeRecorded() {
-        when(request.getRequestURI()).thenReturn("/api/v1/simulation");
-        when(request.getMethod()).thenReturn("POST");
+        when(request.getRequestURI()).thenReturn("/api/v1/mortgage-credit");
+        when(request.getMethod()).thenReturn(CODE_POST);
         when(request.getAttribute("requestStartNanos")).thenReturn(System.nanoTime() - 1_000_000);
         when(response.getStatus()).thenReturn(200);
 
@@ -80,8 +81,8 @@ class RequestLoggerInterceptorTest {
 
     @Test
     void shouldLogOutgoingResponseWithUnknownDurationWhenStartTimeMissing() {
-        when(request.getRequestURI()).thenReturn("/api/v1/simulation");
-        when(request.getMethod()).thenReturn("POST");
+        when(request.getRequestURI()).thenReturn("/api/v1/mortgage-credit");
+        when(request.getMethod()).thenReturn(CODE_POST);
         when(request.getAttribute("requestStartNanos")).thenReturn(null);
         when(response.getStatus()).thenReturn(200);
 
@@ -98,7 +99,7 @@ class RequestLoggerInterceptorTest {
     @Test
     void shouldLogOutgoingResponseWhenUriIsNull() {
         when(request.getRequestURI()).thenReturn(null);
-        when(request.getMethod()).thenReturn("GET");
+        when(request.getMethod()).thenReturn(CODE_GET);
         when(request.getAttribute("requestStartNanos")).thenReturn(null);
         when(response.getStatus()).thenReturn(200);
 

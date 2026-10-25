@@ -7,33 +7,28 @@ import com.credit.bladi.datasource.creditrate.CreditRateDatasource;
 import com.credit.bladi.datasource.creditrate.entity.CreditRateEntity;
 import com.credit.bladi.datasource.creditrate.mapper.CreditRateEntityMapper;
 import com.credit.bladi.exception.CreditRateException;
+import com.credit.bladi.model.creditrate.CreditRateModel;
+import com.credit.bladi.model.creditrate.CreditRatePatchResult;
 import com.credit.bladi.model.enums.CspCode;
-import com.credit.bladi.model.simulation.CreditRateModel;
-import com.credit.bladi.model.simulation.CreditRatePatchResult;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class CreditRateRepository implements ICreditRateRepository {
-
     private static final Logger LOGGER = LogManager.getLogger(CreditRateRepository.class);
 
     private final CreditRateDatasource datasource;
 
-    private final CacheManager cacheManager;
-
-    public CreditRateRepository(CreditRateDatasource datasource, CacheManager cacheManager) {
+    public CreditRateRepository(CreditRateDatasource datasource) {
         this.datasource = datasource;
-        this.cacheManager = cacheManager;
     }
 
     @Override
@@ -63,7 +58,12 @@ public class CreditRateRepository implements ICreditRateRepository {
     }
 
     @Override
-    @Transactional
+    public Optional<Long> findIdByPublicId(UUID publicId) {
+        return datasource.findByPublicId(publicId).map(CreditRateEntity::getId);
+    }
+
+    @Override
+    @CacheEvict(value = "creditRates", key = "#result.after().cspCode.name()")
     public CreditRatePatchResult patchParameters(CreditRateModel creditRatePatch) {
         CreditRateEntity entity = datasource.findById(creditRatePatch.getId())
             .orElseThrow(() -> CreditRateException.of(NOT_FOUND));
@@ -74,15 +74,7 @@ public class CreditRateRepository implements ICreditRateRepository {
         }
         datasource.save(entity);
         CreditRateModel merged = CreditRateEntityMapper.mapFromEntity(entity);
-        evictCachedRate(merged.getCspCode());
         LOGGER.debug("patchParameters - id: {}", creditRatePatch.getId());
         return new CreditRatePatchResult(before, merged);
-    }
-
-    private void evictCachedRate(CspCode cspCode) {
-        Cache cache = cacheManager.getCache("creditRates");
-        if (cache != null) {
-            cache.evict(cspCode.name());
-        }
     }
 }

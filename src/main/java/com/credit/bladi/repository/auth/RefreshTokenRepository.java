@@ -3,6 +3,7 @@ package com.credit.bladi.repository.auth;
 import com.credit.bladi.datasource.auth.RefreshTokenDatasource;
 import com.credit.bladi.datasource.auth.entity.RefreshTokenEntity;
 import com.credit.bladi.model.auth.RefreshToken;
+import java.time.Clock;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
@@ -10,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class RefreshTokenRepository implements IRefreshTokenRepository {
-
     private final RefreshTokenDatasource datasource;
 
-    public RefreshTokenRepository(RefreshTokenDatasource datasource) {
+    private final Clock clock;
+
+    public RefreshTokenRepository(RefreshTokenDatasource datasource, Clock clock) {
+        this.clock = clock;
         this.datasource = datasource;
     }
 
@@ -44,9 +47,8 @@ public class RefreshTokenRepository implements IRefreshTokenRepository {
     }
 
     @Override
-    @Transactional
     public int deleteExpiredTokens() {
-        return datasource.deleteExpiredTokens(System.currentTimeMillis());
+        return datasource.deleteExpiredTokens(clock.millis());
     }
 
     private RefreshToken toModel(String rawToken, RefreshTokenEntity entity) {

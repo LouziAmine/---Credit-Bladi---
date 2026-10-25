@@ -1,4 +1,4 @@
-Feature: GET /api/v1/mourabaha-parameters — happy path
+Feature: GET /api/v1/mourabaha-parameters: happy path
 
   Background:
     * url baseUrl
@@ -16,9 +16,10 @@ Feature: GET /api/v1/mourabaha-parameters — happy path
     And match response.items[0] ==
       """
       {
-        "id": 1,
+        "id": '#uuid',
         "profitRate": 5.25,
         "vatRate": 0.1000,
+        "takafulMonthlyRate": 0.0004,
         "active": true
       }
       """

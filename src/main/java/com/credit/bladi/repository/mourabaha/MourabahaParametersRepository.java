@@ -10,6 +10,7 @@ import com.credit.bladi.exception.MourabahaParametersException;
 import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
 import com.credit.bladi.model.mourabaha.MourabahaParametersPatchResult;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.cache.annotation.CacheEvict;
@@ -18,11 +19,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class MourabahaParametersRepository implements IMourabahaParametersRepository {
-
     private static final Logger LOGGER = LogManager.getLogger(MourabahaParametersRepository.class);
 
     private final MourabahaParametersDatasource datasource;
@@ -45,13 +44,18 @@ public class MourabahaParametersRepository implements IMourabahaParametersReposi
     }
 
     @Override
+    public Optional<Long> findIdByPublicId(UUID publicId) {
+        return datasource.findByPublicId(publicId).map(MourabahaParametersEntity::getId);
+    }
+
+    @Override
     @Cacheable(value = "mourabahaParameters", unless = "#result == null")
     public Optional<MourabahaParametersModel> getActiveParameters() {
         LOGGER.debug("getActiveParameters");
         long activeCount = datasource.countByActiveTrue();
         if (activeCount > 1) {
             LOGGER.warn("getActiveParameters - {} active mourabaha_parameters rows found, expected at most 1 "
-                + "— using the most recent one", activeCount);
+                + ",  using the most recent one", activeCount);
         }
         Optional<MourabahaParametersModel> result = datasource.findActiveParameters()
                 .map(MourabahaParametersEntityMapper::mapFromEntity);
@@ -62,7 +66,6 @@ public class MourabahaParametersRepository implements IMourabahaParametersReposi
     }
 
     @Override
-    @Transactional
     @CacheEvict(value = "mourabahaParameters", allEntries = true)
     public MourabahaParametersPatchResult patchParameters(MourabahaParametersModel mourabahaParametersPatch) {
         MourabahaParametersEntity entity = datasource.findById(mourabahaParametersPatch.getId())

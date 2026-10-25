@@ -1,5 +1,9 @@
 package com.credit.bladi.unittest.config.security;
 
+import static com.credit.bladi.unittest.mock.data.MockFiles.MIME_APPLICATION_JSON;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CB_401;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CB_403;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_UTF_8;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,17 +13,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class SecurityExceptionHandlerTest {
-
     @Mock
     private HttpServletRequest request;
 
@@ -30,7 +37,11 @@ class SecurityExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new SecurityExceptionHandler();
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasenames("i18n/common/error", "i18n/common/security");
+        messageSource.setDefaultEncoding(LABEL_UTF_8);
+        handler = new SecurityExceptionHandler(messageSource, new AcceptHeaderLocaleResolver(),
+            JsonMapper.builder().build(), Clock.systemUTC());
     }
 
     @Test
@@ -42,9 +53,9 @@ class SecurityExceptionHandlerTest {
         handler.handle(request, response, new AccessDeniedException("denied"));
 
         verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
-        verify(response).setContentType("application/json");
+        verify(response).setContentType(MIME_APPLICATION_JSON);
         String output = stringWriter.toString();
-        assertTrue(output.contains("CB-403"));
+        assertTrue(output.contains(LABEL_CB_403));
     }
 
     @Test
@@ -56,9 +67,9 @@ class SecurityExceptionHandlerTest {
         handler.commence(request, response, new AuthenticationException("unauthorized") {});
 
         verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        verify(response).setContentType("application/json");
+        verify(response).setContentType(MIME_APPLICATION_JSON);
         String output = stringWriter.toString();
-        assertTrue(output.contains("CB-401"));
+        assertTrue(output.contains(LABEL_CB_401));
     }
 
     @Test

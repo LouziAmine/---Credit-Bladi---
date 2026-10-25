@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.datasource.auth.entity;
 
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_HASH123;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_MYHASH;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -10,7 +12,6 @@ import com.credit.bladi.datasource.auth.entity.RefreshTokenEntity;
 import org.junit.jupiter.api.Test;
 
 class RefreshTokenEntityTest {
-
     @Test
     void shouldCreateWithDefaultConstructor() {
         RefreshTokenEntity entity = new RefreshTokenEntity();
@@ -23,8 +24,8 @@ class RefreshTokenEntityTest {
 
     @Test
     void shouldCreateWithAllArgsConstructor() {
-        RefreshTokenEntity entity = new RefreshTokenEntity("hash123", 1L, 9999999L);
-        assertEquals("hash123", entity.getTokenHash());
+        RefreshTokenEntity entity = new RefreshTokenEntity(TOKEN_HASH123, 1L, 9999999L);
+        assertEquals(TOKEN_HASH123, entity.getTokenHash());
         assertEquals(1L, entity.getUserId());
         assertEquals(9999999L, entity.getExpiresAt());
         assertFalse(entity.isRevoked());
@@ -40,8 +41,8 @@ class RefreshTokenEntityTest {
     @Test
     void shouldSetAndGetToken() {
         RefreshTokenEntity entity = new RefreshTokenEntity();
-        entity.setTokenHash("myhash");
-        assertEquals("myhash", entity.getTokenHash());
+        entity.setTokenHash(TOKEN_MYHASH);
+        assertEquals(TOKEN_MYHASH, entity.getTokenHash());
     }
 
     @Test
@@ -59,10 +60,9 @@ class RefreshTokenEntityTest {
     }
 
     @Test
-    void shouldSetAndGetRevoked() {
+    void shouldNotBeRevokedWhenCreated() {
         RefreshTokenEntity entity = new RefreshTokenEntity();
-        entity.setRevoked(true);
-        assertTrue(entity.isRevoked());
+        assertFalse(entity.isRevoked());
     }
 
     @Test
@@ -116,10 +116,9 @@ class RefreshTokenEntityTest {
         entity.setId(1L);
         entity.setUserId(7L);
         entity.setExpiresAt(123456789L);
-        entity.setRevoked(true);
         String str = entity.toString();
         assertTrue(str.contains("1"));
         assertTrue(str.contains("7"));
-        assertTrue(str.contains("true"));
+        assertTrue(str.contains("revoked=false"));
     }
 }

@@ -1,4 +1,4 @@
-Feature: POST /api/v1/auth/login — happy path
+Feature: POST /api/v1/auth/login: happy path
 
   Background:
     * url baseUrl

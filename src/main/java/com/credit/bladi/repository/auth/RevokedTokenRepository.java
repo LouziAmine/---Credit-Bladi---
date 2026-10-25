@@ -2,15 +2,17 @@ package com.credit.bladi.repository.auth;
 
 import com.credit.bladi.datasource.auth.RevokedTokenDatasource;
 import com.credit.bladi.datasource.auth.entity.RevokedTokenEntity;
+import java.time.Clock;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class RevokedTokenRepository implements IRevokedTokenRepository {
-
     private final RevokedTokenDatasource datasource;
 
-    public RevokedTokenRepository(RevokedTokenDatasource datasource) {
+    private final Clock clock;
+
+    public RevokedTokenRepository(RevokedTokenDatasource datasource, Clock clock) {
+        this.clock = clock;
         this.datasource = datasource;
     }
 
@@ -20,13 +22,11 @@ public class RevokedTokenRepository implements IRevokedTokenRepository {
     }
 
     @Override
-    @Transactional
     public int deleteExpiredTokens() {
-        return datasource.deleteExpiredTokens(System.currentTimeMillis());
+        return datasource.deleteExpiredTokens(clock.millis());
     }
 
     @Override
-    @Transactional(readOnly = true)
     public boolean isRevoked(String token) {
         return datasource.existsByTokenHash(TokenHasher.hash(token));
     }

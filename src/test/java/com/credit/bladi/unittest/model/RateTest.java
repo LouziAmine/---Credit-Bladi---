@@ -1,5 +1,12 @@
 package com.credit.bladi.unittest.model;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_4_0000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_4_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.MINUS_DECIMAL_0_01;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_4_50;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,21 +16,20 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class RateTest {
-
     @Test
     void shouldCreateRateWithOf() {
-        Rate rate = Rate.of(new BigDecimal("4.50"));
-        assertEquals(new BigDecimal("4.50"), rate.value());
+        Rate rate = Rate.of(DECIMAL_4_50);
+        assertEquals(DECIMAL_4_50, rate.value());
     }
 
     @Test
     void shouldComputeAverageOfTwoRates() {
-        Rate r1 = Rate.of(new BigDecimal("3.00"));
-        Rate r2 = Rate.of(new BigDecimal("5.00"));
+        Rate r1 = Rate.of(DECIMAL_3_00);
+        Rate r2 = Rate.of(DECIMAL_5_00);
 
         Rate avg = r1.average(r2);
 
-        assertEquals(0, avg.value().compareTo(new BigDecimal("4.0000")));
+        assertEquals(0, avg.value().compareTo(DECIMAL_4_0000));
     }
 
     @Test
@@ -35,7 +41,7 @@ class RateTest {
     @Test
     void shouldThrowForNegativeRate() {
         assertThrows(IllegalArgumentException.class,
-            () -> Rate.of(new BigDecimal("-0.01")));
+            () -> Rate.of(MINUS_DECIMAL_0_01));
     }
 
     @Test
@@ -46,15 +52,15 @@ class RateTest {
 
     @Test
     void shouldHaveToStringWithPercent() {
-        Rate rate = Rate.of(new BigDecimal("4.50"));
+        Rate rate = Rate.of(DECIMAL_4_50);
         assertTrue(rate.toString().contains("%"));
-        assertTrue(rate.toString().contains("4.50"));
+        assertTrue(rate.toString().contains(TEXT_4_50));
     }
 
     @Test
     void shouldBeEqualWhenSameValue() {
-        Rate r1 = Rate.of(new BigDecimal("3.50"));
-        Rate r2 = Rate.of(new BigDecimal("3.50"));
+        Rate r1 = Rate.of(DECIMAL_3_50);
+        Rate r2 = Rate.of(DECIMAL_3_50);
         assertEquals(r1, r2);
     }
 }

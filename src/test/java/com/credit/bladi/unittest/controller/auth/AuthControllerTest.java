@@ -5,6 +5,11 @@ import static com.credit.bladi.unittest.mock.auth.MockAuth.USERNAME;
 import static com.credit.bladi.unittest.mock.auth.MockAuth.loginRequest;
 import static com.credit.bladi.unittest.mock.auth.MockAuth.loginResult;
 import static com.credit.bladi.unittest.mock.auth.MockAuth.registerRequest;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_ROLE;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_ACCESS_TOKEN;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_NEW_JWT;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_OLD_REFRESH;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_REFRESH_TOKEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,7 +44,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
-
     @Mock
     private IAuthService authService;
 
@@ -77,13 +81,13 @@ class AuthControllerTest {
     @Test
     void shouldReturn200WithBodyOnLogin() {
         ResponseCookie cookie = ResponseCookie.from("access_token", "jwt").build();
-        when(authService.login(any())).thenReturn(loginResult());
+        when(authService.login(any(), any())).thenReturn(loginResult());
         when(cookieTokenHelper.getCookieMaxAgeSeconds()).thenReturn(3600);
         when(cookieTokenHelper.getRefreshCookieMaxAgeSeconds()).thenReturn(604800);
         when(cookieTokenHelper.buildAuthCookie(anyString(), anyInt())).thenReturn(cookie);
         when(cookieTokenHelper.buildRefreshCookie(anyString(), anyInt())).thenReturn(cookie);
 
-        ResponseEntity<AuthUserResponseDTO> result = controller.login(loginRequest(), httpResponse);
+        ResponseEntity<AuthUserResponseDTO> result = controller.login(loginRequest(), httpRequest, httpResponse);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -94,8 +98,8 @@ class AuthControllerTest {
     @Test
     void shouldReturn204OnLogout() {
         ResponseCookie cleared = ResponseCookie.from("access_token", "").build();
-        when(cookieTokenHelper.extractToken(httpRequest)).thenReturn("access-token");
-        when(cookieTokenHelper.extractRefreshToken(httpRequest)).thenReturn("refresh-token");
+        when(cookieTokenHelper.extractToken(httpRequest)).thenReturn(TOKEN_ACCESS_TOKEN);
+        when(cookieTokenHelper.extractRefreshToken(httpRequest)).thenReturn(TOKEN_REFRESH_TOKEN);
         doNothing().when(authService).logout(anyString(), anyString());
         when(cookieTokenHelper.buildAuthCookie("", 0)).thenReturn(cleared);
         when(cookieTokenHelper.buildRefreshCookie("", 0)).thenReturn(cleared);
@@ -103,14 +107,14 @@ class AuthControllerTest {
         ResponseEntity<Void> result = controller.logout(httpRequest, httpResponse);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
-        verify(authService).logout("access-token", "refresh-token");
+        verify(authService).logout(TOKEN_ACCESS_TOKEN, TOKEN_REFRESH_TOKEN);
     }
 
     @Test
     void shouldReturn200OnRefresh() {
-        ResponseCookie cookie = ResponseCookie.from("access_token", "new-jwt").build();
-        when(cookieTokenHelper.extractRefreshToken(httpRequest)).thenReturn("old-refresh");
-        when(authService.refresh("old-refresh")).thenReturn(loginResult());
+        ResponseCookie cookie = ResponseCookie.from("access_token", TOKEN_NEW_JWT).build();
+        when(cookieTokenHelper.extractRefreshToken(httpRequest)).thenReturn(TOKEN_OLD_REFRESH);
+        when(authService.refresh(TOKEN_OLD_REFRESH)).thenReturn(loginResult());
         when(cookieTokenHelper.getCookieMaxAgeSeconds()).thenReturn(3600);
         when(cookieTokenHelper.getRefreshCookieMaxAgeSeconds()).thenReturn(604800);
         when(cookieTokenHelper.buildAuthCookie(anyString(), anyInt())).thenReturn(cookie);
@@ -128,7 +132,7 @@ class AuthControllerTest {
     void shouldReturn200WithAuthenticatedUserInfo() {
         Authentication auth = mock(Authentication.class);
         when(auth.getName()).thenReturn(USERNAME);
-        doReturn((Collection) List.of(new SimpleGrantedAuthority("ROLE_" + ROLE)))
+        doReturn((Collection) List.of(new SimpleGrantedAuthority(LABEL_ROLE + ROLE)))
             .when(auth).getAuthorities();
         SecurityContextHolder.getContext().setAuthentication(auth);
 

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CurrentActorProvider implements ICurrentActorProvider {
-
     @Override
     public String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

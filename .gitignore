@@ -32,8 +32,14 @@ spring-shell.log
 *.log
 logs/
 
-# ══ Variables d'environnement (IMPORTANT — ne jamais commit) ══
+# ══ Variables d'environnement (IMPORTANT: ne jamais commit) ══
 .env
 .env.local
 application-local.yml
 application-prod.yml
+
+# ══ Stockage local des documents uploadés (dev uniquement, voir app.document-storage.base-path) ══
+/data/documents/
+scripts/e2e/e2e-report.json
+/e2e-report.json
+__pycache__/

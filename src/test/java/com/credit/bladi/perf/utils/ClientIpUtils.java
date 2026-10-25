@@ -5,7 +5,6 @@ import static io.gatling.javaapi.core.CoreDsl.exec;
 import io.gatling.javaapi.core.ChainBuilder;
 
 public final class ClientIpUtils {
-
     private static final String[] BLOCKS = {"192.0.2", "198.51.100", "203.0.113"};
     private static final int HOSTS_PER_BLOCK = 254;
 

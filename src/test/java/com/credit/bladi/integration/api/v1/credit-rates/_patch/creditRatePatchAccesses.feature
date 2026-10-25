@@ -1,4 +1,4 @@
-Feature: PATCH /api/v1/credit-rates/{id} — access restrictions
+Feature: PATCH /api/v1/credit-rates/{id}: access restrictions
 
   Background:
     * url baseUrl

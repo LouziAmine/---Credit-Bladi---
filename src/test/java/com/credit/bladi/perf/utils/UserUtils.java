@@ -1,7 +1,9 @@
 package com.credit.bladi.perf.utils;
 
 import static io.gatling.javaapi.core.CoreDsl.StringBody;
+import static io.gatling.javaapi.core.CoreDsl.doIf;
 import static io.gatling.javaapi.core.CoreDsl.exec;
+import static io.gatling.javaapi.core.CoreDsl.jsonPath;
 import static io.gatling.javaapi.http.HttpDsl.header;
 import static io.gatling.javaapi.http.HttpDsl.http;
 import static io.gatling.javaapi.http.HttpDsl.status;
@@ -9,9 +11,6 @@ import static io.gatling.javaapi.http.HttpDsl.status;
 import io.gatling.javaapi.core.ChainBuilder;
 
 public class UserUtils {
-
-    private static final long ADMIN_ID = 1L;
-
     public static ChainBuilder getAll() {
         return exec(
             http("GET /api/v1/users")
@@ -19,13 +18,27 @@ public class UserUtils {
                 .queryParam("page", "#{page}")
                 .queryParam("size", "#{size}")
                 .check(status().is(200))
+                .check(jsonPath("$.items[0].id").optional().saveAs("listedUserId"))
         );
     }
 
+    // Ids are UUIDs: the detail and patch requests use the first listed record. A listed page past the
+    // last one is empty, so the first page is read when no id is known yet.
+    private static ChainBuilder rememberFirstId() {
+        return doIf(session -> !session.contains("listedUserId")).then(exec(
+            http("GET /api/v1/users (first record)")
+                .get("/api/v1/users")
+                .queryParam("page", "1")
+                .queryParam("size", "1")
+                .check(status().is(200))
+                .check(jsonPath("$.items[0].id").saveAs("listedUserId"))
+        ));
+    }
+
     public static ChainBuilder getById() {
-        return exec(
+        return rememberFirstId().exec(
             http("GET /api/v1/users/{id}")
-                .get("/api/v1/users/" + ADMIN_ID)
+                .get("/api/v1/users/#{listedUserId}")
                 .check(status().is(200))
         );
     }

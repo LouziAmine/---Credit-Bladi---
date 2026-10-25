@@ -17,9 +17,8 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("dev")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class IntegrationTest {
-
     private static final Logger LOGGER = LogManager.getLogger(IntegrationTest.class);
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://localhost:" + System.getProperty("server.port", "8080");
     private static final String ADMIN_USERNAME = "admin";
     private static final String ADMIN_PASSWORD = "admin123";
 
@@ -50,6 +49,6 @@ public class IntegrationTest {
                 });
         }
         assertEquals(0, results.getFeatureFailedCount(),
-            results.getFeatureFailedCount() + " Karate feature(s) failed — see target/karate-reports/");
+            results.getFeatureFailedCount() + " Karate feature(s) failed: see target/karate-reports/");
     }
 }

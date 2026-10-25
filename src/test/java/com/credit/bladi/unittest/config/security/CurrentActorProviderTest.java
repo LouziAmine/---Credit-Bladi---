@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.config.security;
 
+import static com.credit.bladi.unittest.mock.data.MockUsers.PASSWORD_CREDS;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -10,7 +12,6 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 class CurrentActorProviderTest {
-
     private final CurrentActorProvider provider = new CurrentActorProvider();
 
     @AfterEach
@@ -20,11 +21,11 @@ class CurrentActorProviderTest {
 
     @Test
     void shouldReturnUsernameWhenAuthenticated() {
-        TestingAuthenticationToken auth = new TestingAuthenticationToken("jdoe", "creds");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken(USER_JDOE, PASSWORD_CREDS);
         auth.setAuthenticated(true);
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        assertEquals("jdoe", provider.getCurrentUsername());
+        assertEquals(USER_JDOE, provider.getCurrentUsername());
     }
 
     @Test
@@ -36,7 +37,7 @@ class CurrentActorProviderTest {
 
     @Test
     void shouldReturnNullWhenNotAuthenticated() {
-        TestingAuthenticationToken auth = new TestingAuthenticationToken("jdoe", "creds");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken(USER_JDOE, PASSWORD_CREDS);
         auth.setAuthenticated(false);
         SecurityContextHolder.getContext().setAuthentication(auth);
 
@@ -45,7 +46,7 @@ class CurrentActorProviderTest {
 
     @Test
     void shouldReturnNullForAnonymousUser() {
-        TestingAuthenticationToken auth = new TestingAuthenticationToken("anonymousUser", "creds");
+        TestingAuthenticationToken auth = new TestingAuthenticationToken("anonymousUser", PASSWORD_CREDS);
         auth.setAuthenticated(true);
         SecurityContextHolder.getContext().setAuthentication(auth);
 

@@ -1,13 +1,12 @@
 package com.credit.bladi.perf.utils;
 
 public interface SourceFile {
-
-    String SIMULATION_SALA_SOURCE = "gatling_files/simulation/sala/salaRequests.csv";
-    String SIMULATION_FONC_SOURCE = "gatling_files/simulation/fonc/foncRequests.csv";
-    String SIMULATION_RETR_SOURCE = "gatling_files/simulation/retr/retrRequests.csv";
-    String SIMULATION_PROF_SOURCE = "gatling_files/simulation/prof/profRequests.csv";
-    String SIMULATION_INDE_SOURCE = "gatling_files/simulation/inde/indeRequests.csv";
-    String SIMULATION_MRE_SOURCE = "gatling_files/simulation/mre/mreRequests.csv";
+    String MORTGAGE_CREDIT_SALA_SOURCE = "gatling_files/mortgage-credit/sala/salaRequests.csv";
+    String MORTGAGE_CREDIT_FONC_SOURCE = "gatling_files/mortgage-credit/fonc/foncRequests.csv";
+    String MORTGAGE_CREDIT_RETR_SOURCE = "gatling_files/mortgage-credit/retr/retrRequests.csv";
+    String MORTGAGE_CREDIT_PROF_SOURCE = "gatling_files/mortgage-credit/prof/profRequests.csv";
+    String MORTGAGE_CREDIT_INDE_SOURCE = "gatling_files/mortgage-credit/inde/indeRequests.csv";
+    String MORTGAGE_CREDIT_MRE_SOURCE = "gatling_files/mortgage-credit/mre/mreRequests.csv";
 
     String AUTH_LOGIN_SOURCE = "gatling_files/auth/loginRequests.csv";
 

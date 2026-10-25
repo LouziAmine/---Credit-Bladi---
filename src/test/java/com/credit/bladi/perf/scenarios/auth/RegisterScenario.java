@@ -11,7 +11,6 @@ import io.gatling.javaapi.core.ScenarioBuilder;
 import java.time.Duration;
 
 public class RegisterScenario {
-
     private static final Duration RAMP_UP = Duration.ofSeconds(20);
     private static final Duration LOAD_TIME = Duration.ofMinutes(1);
 

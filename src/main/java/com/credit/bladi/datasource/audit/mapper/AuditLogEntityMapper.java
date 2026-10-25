@@ -3,11 +3,12 @@ package com.credit.bladi.datasource.audit.mapper;
 import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.datasource.audit.entity.AuditLogEntity;
 import com.credit.bladi.model.audit.AuditLogModel;
+import com.credit.bladi.model.audit.AuditTarget;
 import com.credit.bladi.model.enums.AuditAction;
+import com.credit.bladi.model.enums.AuditEntityType;
 import java.util.List;
 
 public final class AuditLogEntityMapper {
-
     private AuditLogEntityMapper() {}
 
     public static AuditLogEntity mapToEntity(AuditLogModel auditLogModel) {
@@ -17,28 +18,31 @@ public final class AuditLogEntityMapper {
         auditLogEntity.setIpAddress(auditLogModel.getIpAddress());
         auditLogEntity.setDetails(auditLogModel.getDetails());
         auditLogEntity.setPerformedAt(auditLogModel.getPerformedAt());
+        if (auditLogModel.getTarget() != null) {
+            auditLogEntity.setEntityType(auditLogModel.getTarget().type().name());
+            auditLogEntity.setEntityPublicId(auditLogModel.getTarget().publicId());
+        }
         return auditLogEntity;
     }
 
     public static AuditLogModel mapFromEntity(AuditLogEntity auditLogEntity) {
         return AuditLogModel.getBuilder()
             .id(auditLogEntity.getId())
+            .publicId(auditLogEntity.getPublicId())
             .username(auditLogEntity.getUsername())
             .action(AuditAction.valueOf(auditLogEntity.getAction()))
             .ipAddress(auditLogEntity.getIpAddress())
             .details(auditLogEntity.getDetails())
             .performedAt(auditLogEntity.getPerformedAt())
+            .target(auditLogEntity.getEntityType() != null && auditLogEntity.getEntityPublicId() != null
+                ? new AuditTarget(AuditEntityType.valueOf(auditLogEntity.getEntityType()),
+                    auditLogEntity.getEntityPublicId())
+                : null)
             .build();
     }
 
     public static CreditPage<AuditLogModel> mapToPage(
             List<AuditLogEntity> entities, long total, int page, int size) {
-        CreditPage<AuditLogModel> result = new CreditPage<>();
-        result.setItems(entities.stream().map(AuditLogEntityMapper::mapFromEntity).toList());
-        result.setCurrentPage(page);
-        result.setLastPage(size > 0 ? (int) Math.ceil((double) total / size) : 0);
-        result.setSize(size);
-        result.setTotal((int) total);
-        return result;
+        return CreditPage.of(entities.stream().map(AuditLogEntityMapper::mapFromEntity).toList(), page, size, total);
     }
 }

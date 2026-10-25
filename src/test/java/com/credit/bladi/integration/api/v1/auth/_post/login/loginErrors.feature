@@ -1,4 +1,4 @@
-Feature: POST /api/v1/auth/login — error cases
+Feature: POST /api/v1/auth/login: error cases
 
   Background:
     * url baseUrl

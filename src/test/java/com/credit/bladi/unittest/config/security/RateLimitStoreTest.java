@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.credit.bladi.config.security.RateLimitStore;
 import java.lang.reflect.Field;
+import java.time.Clock;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
@@ -14,12 +15,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class RateLimitStoreTest {
-
     private RateLimitStore store;
 
     @BeforeEach
     void setUp() {
-        store = new RateLimitStore();
+        store = new RateLimitStore(Clock.systemUTC());
     }
 
     @SuppressWarnings("unchecked")

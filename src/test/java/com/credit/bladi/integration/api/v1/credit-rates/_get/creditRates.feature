@@ -1,4 +1,4 @@
-Feature: GET /api/v1/credit-rates — happy path
+Feature: GET /api/v1/credit-rates: happy path
 
   Background:
     * url baseUrl

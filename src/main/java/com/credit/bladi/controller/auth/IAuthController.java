@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Authentication", description = "Login, registration and session endpoints")
 public interface IAuthController {
-
     @Operation(
         summary = "Register a new CLIENT account",
         description = "Creates a new user with the CLIENT role. Username must be unique."
@@ -63,6 +62,7 @@ public interface IAuthController {
                     """)))
     })
     ResponseEntity<AuthUserResponseDTO> login(@Valid @RequestBody LoginRequestDTO dto,
+                                              HttpServletRequest request,
                                               HttpServletResponse response);
 
     @Operation(
@@ -80,11 +80,11 @@ public interface IAuthController {
     ResponseEntity<AuthUserResponseDTO> refresh(HttpServletRequest request, HttpServletResponse response);
 
     @Operation(
-        summary = "Logout — revokes the current JWT and refresh token",
+        summary = "Logout: revokes the current JWT and refresh token",
         description = "Clears both HttpOnly cookies and blacklists the access token + revokes the refresh token."
     )
     @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "Logged out successfully — this endpoint is "
+        @ApiResponse(responseCode = "204", description = "Logged out successfully: this endpoint is "
             + "intentionally public (permitAll) so an expired access token doesn't block refresh-token "
             + "revocation; both tokens are null-checked internally.")
     })

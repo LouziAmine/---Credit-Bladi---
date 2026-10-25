@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.validator;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_30000000;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_70000;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -8,15 +10,14 @@ import java.lang.reflect.Constructor;
 import org.junit.jupiter.api.Test;
 
 class ValidationConstraintsTest {
-
     @Test
     void shouldHaveCorrectAmountMin() {
-        assertEquals("70000", ValidationConstraints.AMOUNT_MIN);
+        assertEquals(TEXT_70000, ValidationConstraints.AMOUNT_MIN);
     }
 
     @Test
     void shouldHaveCorrectAmountMax() {
-        assertEquals("30000000", ValidationConstraints.AMOUNT_MAX);
+        assertEquals(TEXT_30000000, ValidationConstraints.AMOUNT_MAX);
     }
 
     @Test

@@ -1,4 +1,4 @@
-Feature: POST /api/v1/users — happy path (MANAGER only)
+Feature: POST /api/v1/users: happy path (MANAGER only)
 
   Background:
     * url baseUrl

@@ -1,25 +1,26 @@
 package com.credit.bladi.controller.mourabaha.mapper;
 
+import static com.credit.bladi.model.vo.ValueObjectMappers.toBigDecimal;
+import static com.credit.bladi.model.vo.ValueObjectMappers.toRate;
+import static com.credit.bladi.model.vo.ValueObjectMappers.toRatio;
+
 import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.common.CreditPageMapper;
 import com.credit.bladi.controller.dto.mourabaha.request.PatchMourabahaParametersDTO;
 import com.credit.bladi.controller.dto.mourabaha.response.MourabahaParametersResponseDTO;
 import com.credit.bladi.model.mourabaha.MourabahaParametersModel;
-import com.credit.bladi.model.vo.Rate;
-import com.credit.bladi.model.vo.Ratio;
-import java.math.BigDecimal;
 
 public final class MourabahaParametersMapper {
-
     private MourabahaParametersMapper() {
     }
 
     public static MourabahaParametersModel toDomain(Long id, PatchMourabahaParametersDTO patchRequest) {
         return MourabahaParametersModel.getBuilder()
             .id(id)
-            .profitRate(toRate(patchRequest.getProfitRate()))
-            .vatRate(toRatio(patchRequest.getVatRate()))
-            .active(patchRequest.getActive())
+            .profitRate(toRate(patchRequest.profitRate()))
+            .vatRate(toRatio(patchRequest.vatRate()))
+            .takafulMonthlyRate(toRate(patchRequest.takafulMonthlyRate()))
+            .active(patchRequest.active())
             .build();
     }
 
@@ -27,28 +28,12 @@ public final class MourabahaParametersMapper {
         if (mourabahaParameters == null) {
             return null;
         }
-        MourabahaParametersResponseDTO dto = new MourabahaParametersResponseDTO();
-        dto.setId(mourabahaParameters.getId());
-        dto.setProfitRate(toBigDecimal(mourabahaParameters.getProfitRate()));
-        dto.setVatRate(toBigDecimal(mourabahaParameters.getVatRate()));
-        dto.setActive(mourabahaParameters.getActive());
-        return dto;
-    }
-
-    private static Rate toRate(BigDecimal value) {
-        return value != null ? Rate.of(value) : null;
-    }
-
-    private static Ratio toRatio(BigDecimal value) {
-        return value != null ? Ratio.of(value) : null;
-    }
-
-    private static BigDecimal toBigDecimal(Rate rate) {
-        return rate != null ? rate.value() : null;
-    }
-
-    private static BigDecimal toBigDecimal(Ratio ratio) {
-        return ratio != null ? ratio.value() : null;
+        return new MourabahaParametersResponseDTO(
+            mourabahaParameters.getPublicId(),
+            toBigDecimal(mourabahaParameters.getProfitRate()),
+            toBigDecimal(mourabahaParameters.getVatRate()),
+            toBigDecimal(mourabahaParameters.getTakafulMonthlyRate()),
+            mourabahaParameters.getActive());
     }
 
     public static CreditPage<MourabahaParametersResponseDTO> toCreditPage(

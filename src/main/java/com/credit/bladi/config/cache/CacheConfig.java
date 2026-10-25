@@ -12,11 +12,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableCaching
 public class CacheConfig {
-
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
-        manager.setCacheNames(List.of("bamParameters", "creditRates", "mourabahaParameters"));
+        manager.setCacheNames(List.of("bamParameters", "creditRates", "mourabahaParameters",
+                "investmentCreditParameters", "grades", "teams"));
         manager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(50)
                 .expireAfterWrite(Duration.ofMinutes(30)));

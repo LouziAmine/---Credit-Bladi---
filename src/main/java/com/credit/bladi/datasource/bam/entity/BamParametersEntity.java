@@ -1,53 +1,56 @@
 package com.credit.bladi.datasource.bam.entity;
 
+import com.credit.bladi.common.MergeSupport;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.UUID;
 
 @Entity
 @Table(name = "bam_parameters")
 public class BamParametersEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "processing_fees_ratio", nullable = false)
+    @Column(name = "public_id", nullable = false, unique = true)
+    private UUID publicId;
+
+    @Column(name = "processing_fees_ratio", nullable = false, precision = 6, scale = 4)
     private BigDecimal processingFeesRatio;
 
-    @Column(name = "min_processing_fees", nullable = false)
+    @Column(name = "min_processing_fees", nullable = false, precision = 10, scale = 2)
     private BigDecimal minProcessingFees;
 
-    @Column(name = "max_processing_fees", nullable = false)
+    @Column(name = "max_processing_fees", nullable = false, precision = 10, scale = 2)
     private BigDecimal maxProcessingFees;
 
-    @Column(name = "registration_fee_ratio", nullable = false)
+    @Column(name = "registration_fee_ratio", nullable = false, precision = 6, scale = 4)
     private BigDecimal registrationFeeRatio;
 
-    @Column(name = "land_conservation_ratio", nullable = false)
+    @Column(name = "land_conservation_ratio", nullable = false, precision = 6, scale = 4)
     private BigDecimal landConservationRatio;
 
-    @Column(name = "notary_fee_ratio", nullable = false)
+    @Column(name = "notary_fee_ratio", nullable = false, precision = 6, scale = 4)
     private BigDecimal notaryFeeRatio;
 
-    @Column(name = "ltv_ratio", nullable = false)
+    @Column(name = "ltv_ratio", nullable = false, precision = 5, scale = 4)
     private BigDecimal ltvRatio;
 
-    @Column(name = "max_debt_ratio", nullable = false)
+    @Column(name = "max_debt_ratio", nullable = false, precision = 5, scale = 4)
     private BigDecimal maxDebtRatio;
 
     @Column(name = "max_age_at_maturity", nullable = false)
     private Integer maxAgeAtMaturity;
 
-    @Column(name = "adi_monthly_rate", nullable = false)
+    @Column(name = "adi_monthly_rate", nullable = false, precision = 6, scale = 4)
     private BigDecimal adiMonthlyRate;
 
     @Column(name = "active")
@@ -60,12 +63,23 @@ public class BamParametersEntity {
     public BamParametersEntity() {
     }
 
+    @PrePersist
+    private void generatePublicId() {
+        if (publicId == null) {
+            publicId = UUID.randomUUID();
+        }
+    }
+
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public UUID getPublicId() {
+        return publicId;
     }
 
     public BigDecimal getProcessingFeesRatio() {
@@ -157,30 +171,22 @@ public class BamParametersEntity {
     }
 
     public void merge(BamParametersEntity other) {
-        updateIfDifferent(this::setProcessingFeesRatio, this.processingFeesRatio, other.getProcessingFeesRatio());
-        updateIfDifferent(this::setMinProcessingFees, this.minProcessingFees, other.getMinProcessingFees());
-        updateIfDifferent(this::setMaxProcessingFees, this.maxProcessingFees, other.getMaxProcessingFees());
-        updateIfDifferent(this::setRegistrationFeeRatio, this.registrationFeeRatio, other.getRegistrationFeeRatio());
-        updateIfDifferent(this::setLandConservationRatio, this.landConservationRatio, other.getLandConservationRatio());
-        updateIfDifferent(this::setNotaryFeeRatio, this.notaryFeeRatio, other.getNotaryFeeRatio());
-        updateIfDifferent(this::setLtvRatio, this.ltvRatio, other.getLtvRatio());
-        updateIfDifferent(this::setMaxDebtRatio, this.maxDebtRatio, other.getMaxDebtRatio());
-        updateIfDifferent(this::setMaxAgeAtMaturity, this.maxAgeAtMaturity, other.getMaxAgeAtMaturity());
-        updateIfDifferent(this::setAdiMonthlyRate, this.adiMonthlyRate, other.getAdiMonthlyRate());
-        updateIfDifferent(this::setActive, this.active, other.getActive());
-    }
-
-    private static <T> void updateIfDifferent(Consumer<T> setter, T current, T incoming) {
-        if (Objects.nonNull(incoming) && !valuesEqual(current, incoming)) {
-            setter.accept(incoming);
-        }
-    }
-
-    private static boolean valuesEqual(Object current, Object incoming) {
-        if (current instanceof BigDecimal currentValue && incoming instanceof BigDecimal incomingValue) {
-            return currentValue.compareTo(incomingValue) == 0;
-        }
-        return Objects.equals(current, incoming);
+        MergeSupport.updateIfDifferent(this::setProcessingFeesRatio, this.processingFeesRatio,
+            other.getProcessingFeesRatio());
+        MergeSupport.updateIfDifferent(this::setMinProcessingFees, this.minProcessingFees,
+            other.getMinProcessingFees());
+        MergeSupport.updateIfDifferent(this::setMaxProcessingFees, this.maxProcessingFees,
+            other.getMaxProcessingFees());
+        MergeSupport.updateIfDifferent(this::setRegistrationFeeRatio, this.registrationFeeRatio,
+            other.getRegistrationFeeRatio());
+        MergeSupport.updateIfDifferent(this::setLandConservationRatio, this.landConservationRatio,
+            other.getLandConservationRatio());
+        MergeSupport.updateIfDifferent(this::setNotaryFeeRatio, this.notaryFeeRatio, other.getNotaryFeeRatio());
+        MergeSupport.updateIfDifferent(this::setLtvRatio, this.ltvRatio, other.getLtvRatio());
+        MergeSupport.updateIfDifferent(this::setMaxDebtRatio, this.maxDebtRatio, other.getMaxDebtRatio());
+        MergeSupport.updateIfDifferent(this::setMaxAgeAtMaturity, this.maxAgeAtMaturity, other.getMaxAgeAtMaturity());
+        MergeSupport.updateIfDifferent(this::setAdiMonthlyRate, this.adiMonthlyRate, other.getAdiMonthlyRate());
+        MergeSupport.updateIfDifferent(this::setActive, this.active, other.getActive());
     }
 
     @Override

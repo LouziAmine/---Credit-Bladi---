@@ -1,17 +1,23 @@
-Feature: GET /api/v1/bam-parameters/{id} — happy path
+Feature: GET /api/v1/bam-parameters/{id}: happy path
 
   Background:
     * url baseUrl
 
   Scenario: Get BAM parameters by valid id returns 200
-    Given path 'api', 'v1', 'bam-parameters', 1
+    Given path 'api', 'v1', 'bam-parameters'
+    And headers authHeaders
+    When method GET
+    Then status 200
+    * def id = response.items[0].id
+
+    Given path 'api', 'v1', 'bam-parameters', id
     And headers authHeaders
     When method GET
     Then status 200
     And match response ==
       """
       {
-        "id": 1,
+        "id": '#(id)',
         "processingFeesRatio": 0.0030,
         "minProcessingFees": 3000.00,
         "maxProcessingFees": 6000.00,

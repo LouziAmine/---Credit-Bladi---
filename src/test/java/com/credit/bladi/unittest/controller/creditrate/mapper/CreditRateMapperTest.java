@@ -1,5 +1,9 @@
 package com.credit.bladi.unittest.controller.creditrate.mapper;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_MAX;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SALA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,30 +15,27 @@ import com.credit.bladi.controller.creditrate.mapper.CreditRateMapper;
 import com.credit.bladi.controller.dto.creditrate.request.PatchCreditRateDTO;
 import com.credit.bladi.controller.dto.creditrate.response.CreditRateResponseDTO;
 import com.credit.bladi.exception.CreditRateException;
+import com.credit.bladi.model.creditrate.CreditRateModel;
 import com.credit.bladi.model.enums.CspCode;
-import com.credit.bladi.model.simulation.CreditRateModel;
+import com.credit.bladi.model.enums.RateFormula;
 import com.credit.bladi.model.vo.DurationRange;
 import com.credit.bladi.model.vo.Rate;
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class CreditRateMapperTest {
-
     @Test
     void shouldMapPatchDtoToDomain() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        dto.setRateMin(new BigDecimal("3.50"));
-        dto.setRateMax(new BigDecimal("5.50"));
-        dto.setMinDurationMonths(12);
-        dto.setMaxDurationMonths(300);
-        dto.setActive(true);
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(
+            DECIMAL_3_50, DECIMAL_5_50, 12, 300, CODE_MAX, true);
 
         CreditRateModel model = CreditRateMapper.toDomain(1L, dto);
 
         assertEquals(1L, model.getId());
-        assertEquals(0, model.getRateMin().value().compareTo(new BigDecimal("3.50")));
-        assertEquals(0, model.getRateMax().value().compareTo(new BigDecimal("5.50")));
+        assertEquals(0, model.getRateMin().value().compareTo(DECIMAL_3_50));
+        assertEquals(0, model.getRateMax().value().compareTo(DECIMAL_5_50));
+        assertEquals(RateFormula.MAX, model.getRateFormula());
         assertEquals(12, model.getDurationRange().minMonths());
         assertEquals(300, model.getDurationRange().maxMonths());
         assertTrue(model.getActive());
@@ -42,7 +43,7 @@ class CreditRateMapperTest {
 
     @Test
     void shouldMapPatchDtoWithoutDurationToDomain() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(null, null, null, null, null, null);
 
         CreditRateModel model = CreditRateMapper.toDomain(1L, dto);
 
@@ -50,28 +51,38 @@ class CreditRateMapperTest {
     }
 
     @Test
+    void shouldMapPatchDtoWithoutRateFormulaToDomain() {
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(null, null, null, null, null, null);
+
+        CreditRateModel model = CreditRateMapper.toDomain(1L, dto);
+
+        assertNull(model.getRateFormula());
+    }
+
+    @Test
     void shouldThrowWhenOnlyMinDurationProvided() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        dto.setMinDurationMonths(12);
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(null, null, 12, null, null, null);
 
         assertThrows(CreditRateException.class, () -> CreditRateMapper.toDomain(1L, dto));
     }
 
     @Test
     void shouldThrowWhenOnlyMaxDurationProvided() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        dto.setMaxDurationMonths(300);
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(null, null, null, 300, null, null);
 
         assertThrows(CreditRateException.class, () -> CreditRateMapper.toDomain(1L, dto));
     }
 
     @Test
     void shouldMapModelToResponseDto() {
+        UUID publicId = UUID.randomUUID();
         CreditRateModel model = CreditRateModel.getBuilder()
             .id(1L)
+            .publicId(publicId)
             .cspCode(CspCode.SALA)
-            .rateMin(Rate.of(new BigDecimal("3.50")))
-            .rateMax(Rate.of(new BigDecimal("5.50")))
+            .rateMin(Rate.of(DECIMAL_3_50))
+            .rateMax(Rate.of(DECIMAL_5_50))
+            .rateFormula(RateFormula.MAX)
             .durationRange(DurationRange.of(12, 300))
             .active(true)
             .build();
@@ -79,12 +90,13 @@ class CreditRateMapperTest {
         CreditRateResponseDTO dto = CreditRateMapper.toResponseDTO(model);
 
         assertNotNull(dto);
-        assertEquals(1L, dto.getId());
-        assertEquals("SALA", dto.getCspCode());
-        assertEquals(0, dto.getRateMin().compareTo(new BigDecimal("3.50")));
-        assertEquals(12, dto.getMinDurationMonths());
-        assertEquals(300, dto.getMaxDurationMonths());
-        assertTrue(dto.getActive());
+        assertEquals(publicId, dto.id());
+        assertEquals(CODE_SALA, dto.cspCode());
+        assertEquals(0, dto.rateMin().compareTo(DECIMAL_3_50));
+        assertEquals(CODE_MAX, dto.rateFormula());
+        assertEquals(12, dto.minDurationMonths());
+        assertEquals(300, dto.maxDurationMonths());
+        assertTrue(dto.active());
     }
 
     @Test
@@ -93,9 +105,9 @@ class CreditRateMapperTest {
 
         CreditRateResponseDTO dto = CreditRateMapper.toResponseDTO(model);
 
-        assertNull(dto.getCspCode());
-        assertNull(dto.getMinDurationMonths());
-        assertNull(dto.getMaxDurationMonths());
+        assertNull(dto.cspCode());
+        assertNull(dto.minDurationMonths());
+        assertNull(dto.maxDurationMonths());
     }
 
     @Test
@@ -116,6 +128,6 @@ class CreditRateMapperTest {
         CreditPage<CreditRateResponseDTO> result = CreditRateMapper.toCreditPage(source);
 
         assertEquals(1, result.getItems().size());
-        assertEquals("SALA", result.getItems().get(0).getCspCode());
+        assertEquals(CODE_SALA, result.getItems().get(0).cspCode());
     }
 }

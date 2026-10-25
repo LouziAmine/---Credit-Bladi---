@@ -5,6 +5,7 @@ import static com.credit.bladi.unittest.mock.auth.MockAuth.ROLE;
 import static com.credit.bladi.unittest.mock.auth.MockAuth.USERNAME;
 import static com.credit.bladi.unittest.mock.auth.MockAuth.loginRequest;
 import static com.credit.bladi.unittest.mock.auth.MockAuth.registerRequest;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_ROLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,7 +26,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 class AuthControllerMapperTest {
-
     @Test
     void shouldMapLoginRequestToUser() {
         User user = AuthControllerMapper.toUser(loginRequest());
@@ -47,7 +47,7 @@ class AuthControllerMapperTest {
     void shouldMapAuthenticationToResponseDTOAndStripRolePrefix() {
         Authentication auth = mock(Authentication.class);
         when(auth.getName()).thenReturn(USERNAME);
-        doReturn((Collection) List.of(new SimpleGrantedAuthority("ROLE_" + ROLE)))
+        doReturn((Collection) List.of(new SimpleGrantedAuthority(LABEL_ROLE + ROLE)))
             .when(auth).getAuthorities();
 
         AuthUserResponseDTO dto = AuthControllerMapper.toAuthUserResponseDTO(auth);

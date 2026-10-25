@@ -1,17 +1,22 @@
 package com.credit.bladi.unittest.datasource.mourabaha.entity;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_0_10;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_25;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_250;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_5_25;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.credit.bladi.common.MergeSupport;
 import com.credit.bladi.datasource.mourabaha.entity.MourabahaParametersEntity;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class MourabahaParametersEntityTest {
-
     @Test
     void shouldCreateWithDefaultConstructor() {
         MourabahaParametersEntity entity = new MourabahaParametersEntity();
@@ -24,13 +29,13 @@ class MourabahaParametersEntityTest {
     void shouldSetAndGetAllFields() {
         MourabahaParametersEntity entity = new MourabahaParametersEntity();
         entity.setId(1L);
-        entity.setProfitRate(new BigDecimal("5.25"));
-        entity.setVatRate(new BigDecimal("0.10"));
+        entity.setProfitRate(DECIMAL_5_25);
+        entity.setVatRate(DECIMAL_0_10);
         entity.setActive(true);
 
         assertEquals(1L, entity.getId());
-        assertEquals(new BigDecimal("5.25"), entity.getProfitRate());
-        assertEquals(new BigDecimal("0.10"), entity.getVatRate());
+        assertEquals(DECIMAL_5_25, entity.getProfitRate());
+        assertEquals(DECIMAL_0_10, entity.getVatRate());
         assertTrue(entity.getActive());
     }
 
@@ -38,27 +43,23 @@ class MourabahaParametersEntityTest {
     void shouldMergeChangedFieldsOnly() {
         MourabahaParametersEntity current = new MourabahaParametersEntity();
         current.setId(1L);
-        current.setProfitRate(new BigDecimal("5.00"));
-        current.setVatRate(new BigDecimal("0.10"));
+        current.setProfitRate(DECIMAL_5_00);
+        current.setVatRate(DECIMAL_0_10);
         current.setActive(false);
 
         MourabahaParametersEntity incoming = new MourabahaParametersEntity();
-        incoming.setProfitRate(new BigDecimal("5.25"));
+        incoming.setProfitRate(DECIMAL_5_25);
 
         current.merge(incoming);
 
-        assertEquals(0, new BigDecimal("5.25").compareTo(current.getProfitRate()));
-        assertEquals(0, new BigDecimal("0.10").compareTo(current.getVatRate()));
+        assertEquals(0, DECIMAL_5_25.compareTo(current.getProfitRate()));
+        assertEquals(0, DECIMAL_0_10.compareTo(current.getVatRate()));
         assertFalse(current.getActive());
     }
 
     @Test
-    void shouldTreatNonBigDecimalCurrentAsUnequalViaReflection() throws Exception {
-        java.lang.reflect.Method method = MourabahaParametersEntity.class.getDeclaredMethod(
-            "valuesEqual", Object.class, Object.class);
-        method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(null, new BigDecimal("5.25"), "not-a-bigdecimal");
+    void shouldTreatNonBigDecimalCurrentAsUnequalViaMergeSupport() {
+        boolean result = MergeSupport.valuesEqual(DECIMAL_5_25, "not-a-bigdecimal");
 
         assertFalse(result);
     }
@@ -68,24 +69,24 @@ class MourabahaParametersEntityTest {
         MourabahaParametersEntity current = new MourabahaParametersEntity();
 
         MourabahaParametersEntity incoming = new MourabahaParametersEntity();
-        incoming.setProfitRate(new BigDecimal("5.25"));
+        incoming.setProfitRate(DECIMAL_5_25);
 
         current.merge(incoming);
 
-        assertEquals(0, new BigDecimal("5.25").compareTo(current.getProfitRate()));
+        assertEquals(0, DECIMAL_5_25.compareTo(current.getProfitRate()));
     }
 
     @Test
     void shouldNotChangeFieldWhenIncomingValueEqualsCurrent() {
         MourabahaParametersEntity current = new MourabahaParametersEntity();
-        current.setProfitRate(new BigDecimal("5.250"));
+        current.setProfitRate(DECIMAL_5_250);
 
         MourabahaParametersEntity incoming = new MourabahaParametersEntity();
-        incoming.setProfitRate(new BigDecimal("5.25"));
+        incoming.setProfitRate(DECIMAL_5_25);
 
         current.merge(incoming);
 
-        assertEquals(new BigDecimal("5.250"), current.getProfitRate());
+        assertEquals(DECIMAL_5_250, current.getProfitRate());
     }
 
     @Test
@@ -137,7 +138,7 @@ class MourabahaParametersEntityTest {
     void shouldNotBeEqualToDifferentType() {
         MourabahaParametersEntity entity = new MourabahaParametersEntity();
         entity.setId(1L);
-        assertFalse(entity.equals("other"));
+        assertFalse(entity.equals(USER_OTHER));
     }
 
     @Test
@@ -151,11 +152,11 @@ class MourabahaParametersEntityTest {
     void shouldHaveToString() {
         MourabahaParametersEntity entity = new MourabahaParametersEntity();
         entity.setId(1L);
-        entity.setProfitRate(new BigDecimal("5.25"));
+        entity.setProfitRate(DECIMAL_5_25);
         entity.setActive(true);
         String str = entity.toString();
         assertTrue(str.contains("1"));
-        assertTrue(str.contains("5.25"));
+        assertTrue(str.contains(TEXT_5_25));
         assertTrue(str.contains("true"));
     }
 }

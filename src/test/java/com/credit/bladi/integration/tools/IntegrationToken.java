@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public interface IntegrationToken {
-
     String DEFAULT_TOKEN = "Bearer CANNOT_GET_TOKEN";
     int TIMEOUT = 15_000;
     String COOKIE_NAME = "cb_access_token";

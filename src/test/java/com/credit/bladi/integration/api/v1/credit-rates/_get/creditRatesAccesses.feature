@@ -1,4 +1,4 @@
-Feature: GET /api/v1/credit-rates — access restrictions
+Feature: GET /api/v1/credit-rates: access restrictions
 
   Background:
     * url baseUrl

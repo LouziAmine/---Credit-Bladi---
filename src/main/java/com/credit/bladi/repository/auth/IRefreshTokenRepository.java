@@ -4,7 +4,6 @@ import com.credit.bladi.model.auth.RefreshToken;
 import java.util.Optional;
 
 public interface IRefreshTokenRepository {
-
     void save(String token, Long userId, long expiresAt);
 
     Optional<RefreshToken> findByToken(String token);

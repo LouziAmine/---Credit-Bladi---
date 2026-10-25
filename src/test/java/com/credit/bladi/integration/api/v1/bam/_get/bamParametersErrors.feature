@@ -1,4 +1,4 @@
-Feature: GET /api/v1/bam-parameters — error cases
+Feature: GET /api/v1/bam-parameters: error cases
 
   Background:
     * url baseUrl

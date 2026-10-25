@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.datasource.user.entity;
 
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_ALICE;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JOHNDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -12,7 +14,6 @@ import com.credit.bladi.model.enums.UserRole;
 import org.junit.jupiter.api.Test;
 
 class UserEntityTest {
-
     @Test
     void shouldCreateWithDefaultConstructor() {
         UserEntity entity = new UserEntity();
@@ -33,8 +34,8 @@ class UserEntityTest {
     @Test
     void shouldSetAndGetUsername() {
         UserEntity entity = new UserEntity();
-        entity.setUsername("johndoe");
-        assertEquals("johndoe", entity.getUsername());
+        entity.setUsername(USER_JOHNDOE);
+        assertEquals(USER_JOHNDOE, entity.getUsername());
     }
 
     @Test
@@ -108,10 +109,10 @@ class UserEntityTest {
     void shouldHaveToStringWithIdAndUsername() {
         UserEntity entity = new UserEntity();
         entity.setId(1L);
-        entity.setUsername("alice");
+        entity.setUsername(USER_ALICE);
         entity.setRole(UserRole.CLIENT);
         String str = entity.toString();
         assertTrue(str.contains("1"));
-        assertTrue(str.contains("alice"));
+        assertTrue(str.contains(USER_ALICE));
     }
 }

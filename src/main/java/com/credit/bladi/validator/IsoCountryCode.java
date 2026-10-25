@@ -11,8 +11,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = IsoCountryCodeValidator.class)
 public @interface IsoCountryCode {
-
-    String message() default "Nationality code is not a recognized ISO 3166-1 alpha-2 country code";
+    String message() default "{validation.nationalityCode.notIso}";
 
     Class<?>[] groups() default {};
 

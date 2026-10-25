@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 class CachedBodyHttpServletRequestTest {
-
     @Test
     void shouldCacheRequestBody() throws Exception {
         MockHttpServletRequest mockRequest = new MockHttpServletRequest();

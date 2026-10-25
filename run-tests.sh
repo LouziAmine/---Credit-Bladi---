@@ -18,18 +18,18 @@ error()   { echo -e "${RED}[ERROR]${NC} $*"; }
 print_menu() {
     echo ""
     echo -e "${BOLD}╔══════════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}║        Credit Bladi — Dev Launcher       ║${NC}"
+    echo -e "${BOLD}║        Credit Bladi - Dev Launcher       ║${NC}"
     echo -e "${BOLD}╚══════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "  ${CYAN}1)${NC} Unit tests  — JUnit / Mockito        ${GREEN}(no app needed)${NC}"
-    echo -e "  ${CYAN}2)${NC} Karate      — Integration tests       ${YELLOW}(app starts automatically)${NC}"
-    echo -e "  ${CYAN}3)${NC} Gatling     — Performance tests       ${RED}(requires app on :${APP_PORT})${NC}"
-    echo -e "  ${CYAN}4)${NC} K + G       — Karate then Gatling     ${YELLOW}(app auto-managed)${NC}"
-    echo -e "  ${CYAN}5)${NC} Checkstyle  — Architecture & style    ${BLUE}(no app needed)${NC}"
-    echo -e "  ${CYAN}6)${NC} Start app   — DEV mode                ${GREEN}(H2 · Swagger · DEBUG logs)${NC}"
-    echo -e "  ${CYAN}7)${NC} Start app   — DEV + Remote Debug      ${YELLOW}(JDWP :5005 · suspend=n)${NC}"
-    echo -e "  ${CYAN}8)${NC} Dependency-Check — OWASP SCA scan     ${BLUE}(no app needed · downloads NVD data)${NC}"
-    echo -e "  ${CYAN}9)${NC} ZAP         — OWASP DAST scan         ${RED}(requires app on :${APP_PORT} · Docker)${NC}"
+    echo -e "  ${CYAN}1)${NC} Unit tests  - JUnit / Mockito        ${GREEN}(no app needed)${NC}"
+    echo -e "  ${CYAN}2)${NC} Karate      - Integration tests       ${YELLOW}(app starts automatically)${NC}"
+    echo -e "  ${CYAN}3)${NC} Gatling     - Performance tests       ${RED}(requires app on :${APP_PORT})${NC}"
+    echo -e "  ${CYAN}4)${NC} K + G       - Karate then Gatling     ${YELLOW}(app auto-managed)${NC}"
+    echo -e "  ${CYAN}5)${NC} Checkstyle  - Architecture & style    ${BLUE}(no app needed)${NC}"
+    echo -e "  ${CYAN}6)${NC} Start app   - DEV mode                ${GREEN}(PostgreSQL/Docker · Swagger · DEBUG logs)${NC}"
+    echo -e "  ${CYAN}7)${NC} Start app   - DEV + Remote Debug      ${YELLOW}(JDWP :5005 · suspend=n)${NC}"
+    echo -e "  ${CYAN}8)${NC} Dependency-Check - OWASP SCA scan     ${BLUE}(no app needed · downloads NVD data)${NC}"
+    echo -e "  ${CYAN}9)${NC} ZAP         - OWASP DAST scan         ${RED}(requires app on :${APP_PORT} · Docker)${NC}"
     echo -e "  ${CYAN}q)${NC} Quit"
     echo ""
 }
@@ -40,11 +40,42 @@ app_is_running() {
     nc -z localhost "$APP_PORT" 2>/dev/null
 }
 
-start_app_background() {
-    if app_is_running; then
-        success "App already running on :${APP_PORT} — skipping start."
+postgres_is_running() {
+    nc -z localhost 5432 2>/dev/null
+}
+
+ensure_postgres_running() {
+    if postgres_is_running; then
         return 0
     fi
+    warn "PostgreSQL is not reachable on :5432 (dev profile needs it)."
+    echo -ne "  Start it now with 'docker compose up -d'? [Y/n] "
+    read -r answer
+    if [[ "$answer" =~ ^[Nn]$ ]]; then
+        error "Aborting - start it yourself with: docker compose up -d"
+        return 1
+    fi
+    docker compose up -d
+    local max_wait=30
+    local elapsed=0
+    while ! postgres_is_running; do
+        if [ $elapsed -ge $max_wait ]; then
+            error "PostgreSQL did not come up within ${max_wait}s - check 'docker compose logs'."
+            return 1
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+    success "PostgreSQL is UP on :5432"
+}
+
+start_app_background() {
+    if app_is_running; then
+        success "App already running on :${APP_PORT} - skipping start."
+        return 0
+    fi
+
+    ensure_postgres_running || return 1
 
     info "Starting Credit-Bladi on :${APP_PORT} (profile=dev) ..."
 
@@ -60,11 +91,11 @@ start_app_background() {
     local elapsed=0
     while ! app_is_running; do
         if ! kill -0 "$APP_PID" 2>/dev/null; then
-            error "App process died unexpectedly — check the logs."
+            error "App process died unexpectedly - check the logs."
             exit 1
         fi
         if [ $elapsed -ge $max_wait ]; then
-            error "App did not start within ${max_wait}s — aborting."
+            error "App did not start within ${max_wait}s - aborting."
             stop_app
             exit 1
         fi
@@ -91,7 +122,7 @@ stop_app() {
 run_unit_tests() {
     echo ""
     info "Running unit tests (JUnit 5 / Mockito) with coverage..."
-    echo -e "  ${YELLOW}(package: com.credit.bladi.unittest — no Spring context)${NC}"
+    echo -e "  ${YELLOW}(package: com.credit.bladi.unittest - no Spring context)${NC}"
     echo ""
     $MVN test -Dtest="com.credit.bladi.unittest.**" -DfailIfNoTests=false
 
@@ -106,10 +137,10 @@ run_unit_tests() {
         read -r open_answer
         if [[ "$open_answer" =~ ^[Yy]$ ]]; then
             xdg-open "$REPORT" 2>/dev/null || open "$REPORT" 2>/dev/null || \
-                warn "Cannot open browser — navigate to: file://${REPORT}"
+                warn "Cannot open browser - navigate to: file://${REPORT}"
         fi
     else
-        warn "Coverage report not found — JaCoCo may not be configured."
+        warn "Coverage report not found - JaCoCo may not be configured."
     fi
 }
 
@@ -154,21 +185,24 @@ run_both() {
 
 run_checkstyle() {
     echo ""
-    info "Running Checkstyle — verifying Google Java Style compliance..."
-    echo -e "  ${YELLOW}(config: checkstyle.xml — naming, indentation, imports, Javadoc, braces)${NC}"
+    info "Running Checkstyle - verifying Google Java Style compliance..."
+    echo -e "  ${YELLOW}(config: checkstyle.xml - naming, indentation, imports, Javadoc, braces)${NC}"
     echo ""
     $MVN checkstyle:check
-    success "Checkstyle passed — code style is clean."
+    success "Checkstyle passed - code style is clean."
 }
 
 start_app_dev() {
     echo ""
     info "Starting Credit-Bladi in DEV mode..."
     echo ""
-    echo -e "  ${CYAN}Profile  :${NC} dev (H2 in-memory · Liquibase contexts=dev)"
+
+    ensure_postgres_running || return 1
+
+    echo -e "  ${CYAN}Profile  :${NC} dev (PostgreSQL via Docker · Liquibase contexts=dev)"
     echo -e "  ${CYAN}Port     :${NC} http://localhost:${APP_PORT}"
     echo -e "  ${CYAN}Swagger  :${NC} http://localhost:${APP_PORT}/swagger-ui.html"
-    echo -e "  ${CYAN}H2 console:${NC} http://localhost:${APP_PORT}/h2-console"
+    echo -e "  ${CYAN}Postgres :${NC} localhost:5432/bladidb (bladi/bladi)"
     echo -e "  ${CYAN}Logs     :${NC} DEBUG (com.credit.bladi)"
     echo ""
     echo -e "  ${YELLOW}Press Ctrl+C to stop the app.${NC}"
@@ -181,14 +215,14 @@ start_app_dev() {
 
 run_dependency_check() {
     echo ""
-    info "Running OWASP Dependency-Check — scanning dependencies for known CVEs..."
+    info "Running OWASP Dependency-Check - scanning dependencies for known CVEs..."
 
     local nvd_args=()
     if [ -n "${NVD_API_KEY:-}" ]; then
-        success "Using NVD_API_KEY from environment — updates will be much faster."
+        success "Using NVD_API_KEY from environment - updates will be much faster."
         nvd_args=(-DnvdApiKey="${NVD_API_KEY}")
     else
-        warn "No NVD_API_KEY set — the first run can take a VERY long time (hours)."
+        warn "No NVD_API_KEY set - the first run can take a VERY long time (hours)."
         echo -e "  ${YELLOW}Get a free key: https://nvd.nist.gov/developers/request-an-api-key${NC}"
         echo -e "  ${YELLOW}Then export it:  export NVD_API_KEY=xxxx${NC}"
     fi
@@ -216,7 +250,7 @@ check_docker_permissions() {
         error "Your user is not in the 'docker' group."
         echo -e "  ${CYAN}Fix:${NC} sudo usermod -aG docker \$USER   (then log out and back in)"
     else
-        error "Cannot connect to Docker daemon — is it installed and running?"
+        error "Cannot connect to Docker daemon - is it installed and running?"
         echo -e "  ${YELLOW}Try:${NC} sudo systemctl status docker"
     fi
     return 1
@@ -242,7 +276,7 @@ run_zap() {
         fi
     fi
     info "Running OWASP ZAP DAST scan (config: security/zap-automation.yaml)..."
-    echo -e "  ${YELLOW}(active scan is intrusive — only run against this local/dev instance)${NC}"
+    echo -e "  ${YELLOW}(active scan is intrusive - only run against this local/dev instance)${NC}"
     echo ""
     local zap_status=0
     ./security/run-zap-scan.sh || zap_status=$?
@@ -258,11 +292,14 @@ start_app_debug() {
     echo ""
     info "Starting Credit-Bladi in DEV + DEBUG mode..."
     echo ""
-    echo -e "  ${CYAN}Profile  :${NC} dev (H2 in-memory · Liquibase contexts=dev)"
+
+    ensure_postgres_running || return 1
+
+    echo -e "  ${CYAN}Profile  :${NC} dev (PostgreSQL via Docker · Liquibase contexts=dev)"
     echo -e "  ${CYAN}Port     :${NC} http://localhost:${APP_PORT}"
     echo -e "  ${CYAN}Debug    :${NC} JDWP listening on :5005 (suspend=n)"
     echo -e "  ${CYAN}Swagger  :${NC} http://localhost:${APP_PORT}/swagger-ui.html"
-    echo -e "  ${CYAN}H2 console:${NC} http://localhost:${APP_PORT}/h2-console"
+    echo -e "  ${CYAN}Postgres :${NC} localhost:5432/bladidb (bladi/bladi)"
     echo -e "  ${CYAN}Logs     :${NC} DEBUG (com.credit.bladi)"
     echo ""
     echo -e "  ${YELLOW}Attach your debugger on port 5005, then press Ctrl+C to stop.${NC}"

@@ -1,6 +1,7 @@
 package com.credit.bladi.config.security;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Clock;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
@@ -9,7 +10,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class RateLimitStore {
-
     static final long WINDOW_MS = 60_000L;
 
     private final Map<String, Deque<Long>> timestamps = Caffeine.newBuilder()
@@ -17,13 +17,19 @@ public class RateLimitStore {
         .<String, Deque<Long>>build()
         .asMap();
 
+    private final Clock clock;
+
+    public RateLimitStore(Clock clock) {
+        this.clock = clock;
+    }
+
     public boolean isRateLimited(String key, int maxRequests) {
         AtomicBoolean limited = new AtomicBoolean(false);
         timestamps.compute(key, (k, deque) -> {
             if (deque == null) {
                 deque = new ArrayDeque<>();
             }
-            long now = System.currentTimeMillis();
+            long now = clock.millis();
             while (!deque.isEmpty() && deque.peekFirst() < now - WINDOW_MS) {
                 deque.pollFirst();
             }
@@ -38,7 +44,7 @@ public class RateLimitStore {
     }
 
     public void evictExpiredEntries() {
-        long cutoff = System.currentTimeMillis() - WINDOW_MS;
+        long cutoff = clock.millis() - WINDOW_MS;
         timestamps.forEach((key, ignored) -> timestamps.compute(key, (k, deque) -> {
             if (deque == null) {
                 return null;

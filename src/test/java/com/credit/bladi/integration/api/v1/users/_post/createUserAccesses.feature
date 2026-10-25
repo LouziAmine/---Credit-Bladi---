@@ -1,4 +1,4 @@
-Feature: POST /api/v1/users — access restrictions (MANAGER only)
+Feature: POST /api/v1/users: access restrictions (MANAGER only)
 
   Background:
     * url baseUrl

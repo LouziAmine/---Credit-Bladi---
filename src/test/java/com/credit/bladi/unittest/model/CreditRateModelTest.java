@@ -1,26 +1,32 @@
 package com.credit.bladi.unittest.model;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_6_00;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SALA;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.credit.bladi.model.creditrate.CreditRateModel;
 import com.credit.bladi.model.enums.CspCode;
-import com.credit.bladi.model.simulation.CreditRateModel;
+import com.credit.bladi.model.enums.RateFormula;
 import com.credit.bladi.model.vo.DurationRange;
 import com.credit.bladi.model.vo.Rate;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class CreditRateModelTest {
-
     @Test
     void shouldBuildWithAllFields() {
         CreditRateModel model = CreditRateModel.getBuilder()
             .id(1L)
             .cspCode(CspCode.SALA)
-            .rateMin(Rate.of(new BigDecimal("3.50")))
-            .rateMax(Rate.of(new BigDecimal("5.50")))
+            .rateMin(Rate.of(DECIMAL_3_50))
+            .rateMax(Rate.of(DECIMAL_5_50))
+            .rateFormula(RateFormula.AVERAGE)
             .durationRange(DurationRange.of(12, 300))
             .active(true)
             .build();
@@ -28,11 +34,24 @@ class CreditRateModelTest {
         assertNotNull(model);
         assertEquals(1L, model.getId());
         assertEquals(CspCode.SALA, model.getCspCode());
-        assertEquals(0, model.getRateMin().value().compareTo(new BigDecimal("3.50")));
-        assertEquals(0, model.getRateMax().value().compareTo(new BigDecimal("5.50")));
+        assertEquals(0, model.getRateMin().value().compareTo(DECIMAL_3_50));
+        assertEquals(0, model.getRateMax().value().compareTo(DECIMAL_5_50));
+        assertEquals(RateFormula.AVERAGE, model.getRateFormula());
         assertEquals(12, model.getDurationRange().minMonths());
         assertEquals(300, model.getDurationRange().maxMonths());
         assertTrue(model.getActive());
+    }
+
+    @Test
+    void shouldCalculateRateUsingRateFormula() {
+        CreditRateModel minFormulaModel = CreditRateModel.getBuilder()
+            .id(1L)
+            .rateMin(Rate.of(DECIMAL_3_50))
+            .rateMax(Rate.of(DECIMAL_5_50))
+            .rateFormula(RateFormula.MIN)
+            .build();
+
+        assertEquals(0, minFormulaModel.calculateRate().value().compareTo(DECIMAL_3_50));
     }
 
     @Test
@@ -55,7 +74,7 @@ class CreditRateModelTest {
     @Test
     void shouldAllowNullCspCodeForPartialPatch() {
         CreditRateModel patch = CreditRateModel.getBuilder()
-            .id(1L).rateMax(Rate.of(new BigDecimal("6.00"))).build();
+            .id(1L).rateMax(Rate.of(DECIMAL_6_00)).build();
 
         assertEquals(1L, patch.getId());
         assertNull(patch.getCspCode());
@@ -74,8 +93,8 @@ class CreditRateModelTest {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
             () -> CreditRateModel.getBuilder()
                 .id(1L)
-                .rateMin(Rate.of(new BigDecimal("6.00")))
-                .rateMax(Rate.of(new BigDecimal("5.00")))
+                .rateMin(Rate.of(DECIMAL_6_00))
+                .rateMax(Rate.of(DECIMAL_5_00))
                 .build());
     }
 
@@ -83,11 +102,11 @@ class CreditRateModelTest {
     void shouldDescribeChangesFromBefore() {
         CreditRateModel before = CreditRateModel.getBuilder()
             .id(1L).cspCode(CspCode.SALA)
-            .rateMin(Rate.of(new BigDecimal("5.00"))).rateMax(Rate.of(new BigDecimal("5.50")))
+            .rateMin(Rate.of(DECIMAL_5_00)).rateMax(Rate.of(DECIMAL_5_50))
             .durationRange(DurationRange.of(12, 240)).active(true).build();
         CreditRateModel after = CreditRateModel.getBuilder()
             .id(1L).cspCode(CspCode.SALA)
-            .rateMin(Rate.of(new BigDecimal("5.00"))).rateMax(Rate.of(new BigDecimal("6.00")))
+            .rateMin(Rate.of(DECIMAL_5_00)).rateMax(Rate.of(DECIMAL_6_00))
             .durationRange(DurationRange.of(12, 240)).active(true).build();
 
         String changes = after.describeChangesFrom(before);
@@ -99,7 +118,7 @@ class CreditRateModelTest {
     @Test
     void shouldDescribeRateMinBecomingUnset() {
         CreditRateModel before = CreditRateModel.getBuilder()
-            .id(1L).rateMin(Rate.of(new BigDecimal("5.00"))).build();
+            .id(1L).rateMin(Rate.of(DECIMAL_5_00)).build();
         CreditRateModel after = CreditRateModel.getBuilder().id(1L).build();
 
         String changes = after.describeChangesFrom(before);
@@ -112,7 +131,7 @@ class CreditRateModelTest {
         CreditRateModel model = CreditRateModel.getBuilder()
             .id(1L).cspCode(CspCode.SALA).durationRange(DurationRange.of(12, 300)).build();
         String str = model.toString();
-        assertTrue(str.contains("SALA"));
+        assertTrue(str.contains(CODE_SALA));
     }
 
     @Test
@@ -138,6 +157,6 @@ class CreditRateModelTest {
     @Test
     void shouldNotBeEqualToDifferentType() {
         CreditRateModel model = CreditRateModel.getBuilder().id(1L).build();
-        assertTrue(!model.equals("other"));
+        assertTrue(!model.equals(USER_OTHER));
     }
 }

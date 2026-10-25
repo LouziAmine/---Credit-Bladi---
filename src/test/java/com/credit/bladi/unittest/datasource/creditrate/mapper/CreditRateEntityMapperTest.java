@@ -1,7 +1,7 @@
 package com.credit.bladi.unittest.datasource.creditrate.mapper;
 
-import static com.credit.bladi.unittest.mock.simulation.MockSimulation.creditRateEntity;
-import static com.credit.bladi.unittest.mock.simulation.MockSimulation.creditRateModel;
+import static com.credit.bladi.unittest.mock.mortgage.MockMortgageCredit.creditRateEntity;
+import static com.credit.bladi.unittest.mock.mortgage.MockMortgageCredit.creditRateModel;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,14 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.credit.bladi.common.CreditPage;
 import com.credit.bladi.datasource.creditrate.entity.CreditRateEntity;
 import com.credit.bladi.datasource.creditrate.mapper.CreditRateEntityMapper;
-import com.credit.bladi.model.simulation.CreditRateModel;
+import com.credit.bladi.model.creditrate.CreditRateModel;
 import com.credit.bladi.model.vo.DurationRange;
 import java.util.List;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.junit.jupiter.api.Test;
 
 class CreditRateEntityMapperTest {
-
     @Test
     void shouldMapEntityToModel() {
         CreditRateModel model = CreditRateEntityMapper.mapFromEntity(creditRateEntity());

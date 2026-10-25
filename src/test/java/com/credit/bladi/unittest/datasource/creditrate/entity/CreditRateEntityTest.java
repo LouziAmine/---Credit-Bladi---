@@ -1,17 +1,22 @@
 package com.credit.bladi.unittest.datasource.creditrate.entity;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_1_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_4_00;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SALA;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.credit.bladi.common.MergeSupport;
 import com.credit.bladi.datasource.creditrate.entity.CreditRateEntity;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class CreditRateEntityTest {
-
     @Test
     void shouldCreateWithDefaultConstructor() {
         CreditRateEntity entity = new CreditRateEntity();
@@ -24,31 +29,25 @@ class CreditRateEntityTest {
     void shouldSetAndGetAllFields() {
         CreditRateEntity entity = new CreditRateEntity();
         entity.setId(1L);
-        entity.setCspCode("SALA");
-        entity.setRateMin(new BigDecimal("3.50"));
-        entity.setRateMax(new BigDecimal("5.50"));
+        entity.setCspCode(CODE_SALA);
+        entity.setRateMin(DECIMAL_3_50);
+        entity.setRateMax(DECIMAL_5_50);
         entity.setMinDurationMonths(12);
         entity.setMaxDurationMonths(300);
         entity.setActive(true);
-        entity.setVersion(3L);
 
         assertEquals(1L, entity.getId());
-        assertEquals("SALA", entity.getCspCode());
-        assertEquals(new BigDecimal("3.50"), entity.getRateMin());
-        assertEquals(new BigDecimal("5.50"), entity.getRateMax());
+        assertEquals(CODE_SALA, entity.getCspCode());
+        assertEquals(DECIMAL_3_50, entity.getRateMin());
+        assertEquals(DECIMAL_5_50, entity.getRateMax());
         assertEquals(12, entity.getMinDurationMonths());
         assertEquals(300, entity.getMaxDurationMonths());
         assertTrue(entity.getActive());
-        assertEquals(3L, entity.getVersion());
     }
 
     @Test
-    void shouldTreatNonBigDecimalCurrentAsUnequalViaReflection() throws Exception {
-        java.lang.reflect.Method method = CreditRateEntity.class.getDeclaredMethod(
-            "valuesEqual", Object.class, Object.class);
-        method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(null, new BigDecimal("1.00"), "not-a-bigdecimal");
+    void shouldTreatNonBigDecimalCurrentAsUnequalViaMergeSupport() {
+        boolean result = MergeSupport.valuesEqual(DECIMAL_1_00, "not-a-bigdecimal");
 
         assertFalse(result);
     }
@@ -56,17 +55,17 @@ class CreditRateEntityTest {
     @Test
     void shouldMergeChangedRateFields() {
         CreditRateEntity current = new CreditRateEntity();
-        current.setRateMin(new BigDecimal("3.50"));
-        current.setRateMax(new BigDecimal("5.50"));
+        current.setRateMin(DECIMAL_3_50);
+        current.setRateMax(DECIMAL_5_50);
 
         CreditRateEntity incoming = new CreditRateEntity();
-        incoming.setRateMin(new BigDecimal("4.00"));
-        incoming.setRateMax(new BigDecimal("5.50"));
+        incoming.setRateMin(DECIMAL_4_00);
+        incoming.setRateMax(DECIMAL_5_50);
 
         current.merge(incoming);
 
-        assertEquals(0, new BigDecimal("4.00").compareTo(current.getRateMin()));
-        assertEquals(0, new BigDecimal("5.50").compareTo(current.getRateMax()));
+        assertEquals(0, DECIMAL_4_00.compareTo(current.getRateMin()));
+        assertEquals(0, DECIMAL_5_50.compareTo(current.getRateMax()));
     }
 
     @Test
@@ -74,11 +73,11 @@ class CreditRateEntityTest {
         CreditRateEntity current = new CreditRateEntity();
 
         CreditRateEntity incoming = new CreditRateEntity();
-        incoming.setRateMin(new BigDecimal("3.50"));
+        incoming.setRateMin(DECIMAL_3_50);
 
         current.merge(incoming);
 
-        assertEquals(0, new BigDecimal("3.50").compareTo(current.getRateMin()));
+        assertEquals(0, DECIMAL_3_50.compareTo(current.getRateMin()));
     }
 
     @Test
@@ -153,7 +152,7 @@ class CreditRateEntityTest {
     void shouldNotBeEqualToDifferentType() {
         CreditRateEntity entity = new CreditRateEntity();
         entity.setId(1L);
-        assertFalse(entity.equals("other"));
+        assertFalse(entity.equals(USER_OTHER));
     }
 
     @Test
@@ -167,11 +166,11 @@ class CreditRateEntityTest {
     void shouldHaveToString() {
         CreditRateEntity entity = new CreditRateEntity();
         entity.setId(1L);
-        entity.setCspCode("SALA");
+        entity.setCspCode(CODE_SALA);
         entity.setActive(true);
         String str = entity.toString();
         assertTrue(str.contains("1"));
-        assertTrue(str.contains("SALA"));
+        assertTrue(str.contains(CODE_SALA));
         assertTrue(str.contains("true"));
     }
 }

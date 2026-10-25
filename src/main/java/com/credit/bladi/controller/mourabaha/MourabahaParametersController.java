@@ -9,7 +9,7 @@ import com.credit.bladi.controller.dto.mourabaha.request.PatchMourabahaParameter
 import com.credit.bladi.controller.dto.mourabaha.response.MourabahaParametersResponseDTO;
 import com.credit.bladi.service.mourabahaparameters.IMourabahaParametersService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/mourabaha-parameters")
 @PreAuthorize("hasRole('MANAGER')")
 public class MourabahaParametersController implements IMourabahaParametersController {
-
     private final IMourabahaParametersService mourabahaParametersService;
 
     public MourabahaParametersController(IMourabahaParametersService mourabahaParametersService) {
@@ -45,18 +44,19 @@ public class MourabahaParametersController implements IMourabahaParametersContro
 
     @Override
     @GetMapping("/{id}")
-    public ResponseEntity<MourabahaParametersResponseDTO> getById(
-            @Min(value = 1, message = "INVALID_ID: id must be a positive number.") @PathVariable Long id) {
-        return ResponseEntity.ok(toResponseDTO(mourabahaParametersService.getById(id)));
+    public ResponseEntity<MourabahaParametersResponseDTO> getById(@PathVariable UUID id) {
+        Long resolvedId = mourabahaParametersService.resolveMourabahaParametersId(id);
+        return ResponseEntity.ok(toResponseDTO(mourabahaParametersService.getById(resolvedId)));
     }
 
     @Override
     @PatchMapping("/{id}")
     public ResponseEntity<Void> patchParameters(
-        @Min(value = 1, message = "INVALID_ID: id must be a positive number.") @PathVariable Long id,
+        @PathVariable UUID id,
         @Valid @RequestBody PatchMourabahaParametersDTO dto
     ) {
-        mourabahaParametersService.patchParameters(toDomain(id, dto));
+        Long resolvedId = mourabahaParametersService.resolveMourabahaParametersId(id);
+        mourabahaParametersService.patchParameters(toDomain(resolvedId, dto));
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

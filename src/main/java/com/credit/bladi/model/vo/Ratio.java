@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 public record Ratio(BigDecimal value) {
-
     public Ratio {
         Objects.requireNonNull(value, "ratio value cannot be null");
         if (value.compareTo(BigDecimal.ZERO) <= 0) {
@@ -27,11 +26,13 @@ public record Ratio(BigDecimal value) {
         return value.compareTo(other.value) < 0;
     }
 
-    public boolean equalsValue(Ratio other) {
-        return other != null && value.compareTo(other.value) == 0;
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof Ratio other && value.compareTo(other.value) == 0;
     }
 
-    public int valueHashCode() {
+    @Override
+    public int hashCode() {
         return value.stripTrailingZeros().hashCode();
     }
 

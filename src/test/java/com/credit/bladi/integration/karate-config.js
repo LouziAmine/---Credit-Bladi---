@@ -9,12 +9,14 @@ function fn() {
     let authHeaders = {
         'Authorization': managerToken,
         'Content-Type': 'application/json',
-        'x-request-id': requestId
+        'x-request-id': requestId,
+        'Accept-Language': 'en'
     };
 
     let publicHeaders = {
         'Content-Type': 'application/json',
-        'x-request-id': requestId
+        'x-request-id': requestId,
+        'Accept-Language': 'en'
     };
 
     var config = {
@@ -31,8 +33,12 @@ function fn() {
     karate.configure('printEnabled', true);
     karate.configure('logPrettyRequest', true);
     karate.configure('logPrettyResponse', true);
+    // Applied as defaults to every request in every feature, even scenarios that set headers
+    // ad hoc (e.g. `header Authorization = someToken`) instead of spreading authHeaders/publicHeaders, 
+    // keeps error message assertions in English regardless of how a scenario builds its headers.
+    karate.configure('headers', { 'Accept-Language': 'en' });
 
-    karate.log('Karate configuration loaded — baseUrl:', baseUrl);
+    karate.log('Karate configuration loaded: baseUrl:', baseUrl);
 
     return config;
 }

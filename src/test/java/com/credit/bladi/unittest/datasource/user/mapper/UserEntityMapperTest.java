@@ -1,5 +1,9 @@
 package com.credit.bladi.unittest.datasource.user.mapper;
 
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_ENCODED;
+import static com.credit.bladi.unittest.mock.data.MockUsers.PASSWORD_PASS;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_ALICE;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_BOB;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,18 +20,18 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.junit.jupiter.api.Test;
 
 class UserEntityMapperTest {
-
     @Test
     void shouldMapFromEntity() {
         UserEntity entity = new UserEntity();
         entity.setId(1L);
-        entity.setUsername("alice");
-        entity.setPassword("pass");
+        entity.setUsername(USER_ALICE);
+        entity.setPassword(PASSWORD_PASS);
         entity.setRole(UserRole.CLIENT);
 
         User user = UserEntityMapper.mapFromEntity(entity);
 
-        User expected = User.getBuilder().id(1L).username("alice").password("pass").role(UserRole.CLIENT).build();
+        User expected = User.getBuilder().id(1L).username(USER_ALICE).password(PASSWORD_PASS)
+            .role(UserRole.CLIENT).build();
         assertTrue(EqualsBuilder.reflectionEquals(expected, user));
     }
 
@@ -35,7 +39,7 @@ class UserEntityMapperTest {
     void shouldMapEntitiesToPage() {
         UserEntity entity = new UserEntity();
         entity.setId(1L);
-        entity.setUsername("alice");
+        entity.setUsername(USER_ALICE);
         entity.setRole(UserRole.CLIENT);
 
         CreditPage<User> page = UserEntityMapper.mapToPage(List.of(entity), 10L, 1, 3);
@@ -54,16 +58,16 @@ class UserEntityMapperTest {
     @Test
     void shouldMapToNewEntity() {
         User user = User.getBuilder()
-            .username("bob")
-            .password("encoded")
+            .username(USER_BOB)
+            .password(TOKEN_ENCODED)
             .role(UserRole.MANAGER)
             .build();
 
         UserEntity entity = UserEntityMapper.mapToNewEntity(user);
 
         UserEntity expected = new UserEntity();
-        expected.setUsername("bob");
-        expected.setPassword("encoded");
+        expected.setUsername(USER_BOB);
+        expected.setPassword(TOKEN_ENCODED);
         expected.setRole(UserRole.MANAGER);
         assertTrue(EqualsBuilder.reflectionEquals(expected, entity));
     }
@@ -72,8 +76,8 @@ class UserEntityMapperTest {
     void shouldRejectMapToNewEntityWithExistingId() {
         User user = User.getBuilder()
             .id(2L)
-            .username("bob")
-            .password("encoded")
+            .username(USER_BOB)
+            .password(TOKEN_ENCODED)
             .role(UserRole.MANAGER)
             .build();
 

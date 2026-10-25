@@ -1,4 +1,4 @@
-Feature: POST /api/v1/auth/logout — does not require authentication
+Feature: POST /api/v1/auth/logout: does not require authentication
 
   Background:
     * url baseUrl

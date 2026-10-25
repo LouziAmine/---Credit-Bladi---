@@ -1,5 +1,12 @@
 package com.credit.bladi.unittest.config;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_406;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_413;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_429;
+import static com.credit.bladi.unittest.mock.data.MockContacts.EMAIL_DEV_AT_CREDIT_BLADI_MA;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_AUTHORIZATION;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CREDIT_BLADI_API;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_MOROCCAN_MORTGAGE_SIMULATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -35,16 +42,15 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 class ConfigBeansTest {
-
     @Test
     void shouldCreateGroupedOpenApi() {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API",
-            "Moroccan mortgage simulator",
+            LABEL_CREDIT_BLADI_API,
+            LABEL_MOROCCAN_MORTGAGE_SIMULATOR,
             "1.0.0",
             "com.credit.bladi",
             "dev",
-            "dev@credit-bladi.ma",
+            EMAIL_DEV_AT_CREDIT_BLADI_MA,
             null
         );
         GroupedOpenApi api = config.api();
@@ -54,12 +60,12 @@ class ConfigBeansTest {
     @Test
     void shouldCreateOpenAPI() {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API",
-            "Moroccan mortgage simulator",
+            LABEL_CREDIT_BLADI_API,
+            LABEL_MOROCCAN_MORTGAGE_SIMULATOR,
             "1.0.0",
             "com.credit.bladi",
             "dev",
-            "dev@credit-bladi.ma",
+            EMAIL_DEV_AT_CREDIT_BLADI_MA,
             null
         );
         OpenAPI openAPI = config.creditBladiOpenAPI();
@@ -70,12 +76,12 @@ class ConfigBeansTest {
     @Test
     void shouldCreateOpenAPIWithServerUrl() {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API",
-            "Moroccan mortgage simulator",
+            LABEL_CREDIT_BLADI_API,
+            LABEL_MOROCCAN_MORTGAGE_SIMULATOR,
             "1.0.0",
             "com.credit.bladi",
             "dev",
-            "dev@credit-bladi.ma",
+            EMAIL_DEV_AT_CREDIT_BLADI_MA,
             "https://api.credit-bladi.ma"
         );
         OpenAPI openAPI = config.creditBladiOpenAPI();
@@ -104,7 +110,9 @@ class ConfigBeansTest {
         WebConfig config = new WebConfig();
 
         FilterRegistrationBean<com.credit.bladi.config.web.CachedBodyRequestFilter> registration =
-            config.cachedBodyRequestFilter(1048576);
+            config.cachedBodyRequestFilter(1048576, tools.jackson.databind.json.JsonMapper.builder().build(),
+                new org.springframework.context.support.StaticMessageSource(),
+                new org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver(), java.time.Clock.systemUTC());
 
         assertNotNull(registration);
         assertNotNull(registration.getFilter());
@@ -154,15 +162,15 @@ class ConfigBeansTest {
     @Test
     void shouldCustomizerRemoveAuthorizationHeader() throws Exception {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API", "Moroccan mortgage simulator", "1.0.0",
-            "com.credit.bladi", "dev", "dev@credit-bladi.ma", null);
+            LABEL_CREDIT_BLADI_API, LABEL_MOROCCAN_MORTGAGE_SIMULATOR, "1.0.0",
+            "com.credit.bladi", "dev", EMAIL_DEV_AT_CREDIT_BLADI_MA, null);
         GroupedOpenApi api = config.api();
         assertNotNull(api);
 
         OperationCustomizer customizer = api.getOperationCustomizers().iterator().next();
         Operation operation = new Operation();
         List<Parameter> params = new ArrayList<>();
-        params.add(new Parameter().name("Authorization"));
+        params.add(new Parameter().name(LABEL_AUTHORIZATION));
         params.add(new Parameter().name("page"));
         operation.setParameters(params);
 
@@ -174,8 +182,8 @@ class ConfigBeansTest {
     @Test
     void shouldCustomizerHandleNullParameters() throws Exception {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API", "Moroccan mortgage simulator", "1.0.0",
-            "com.credit.bladi", "dev", "dev@credit-bladi.ma", null);
+            LABEL_CREDIT_BLADI_API, LABEL_MOROCCAN_MORTGAGE_SIMULATOR, "1.0.0",
+            "com.credit.bladi", "dev", EMAIL_DEV_AT_CREDIT_BLADI_MA, null);
         GroupedOpenApi api = config.api();
         OperationCustomizer customizer = api.getOperationCustomizers().iterator().next();
         Operation operation = new Operation();
@@ -188,8 +196,8 @@ class ConfigBeansTest {
     @Test
     void shouldCustomizerHandleHandlerMethodWithNullBeanType() throws Exception {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API", "Moroccan mortgage simulator", "1.0.0",
-            "com.credit.bladi", "dev", "dev@credit-bladi.ma", null);
+            LABEL_CREDIT_BLADI_API, LABEL_MOROCCAN_MORTGAGE_SIMULATOR, "1.0.0",
+            "com.credit.bladi", "dev", EMAIL_DEV_AT_CREDIT_BLADI_MA, null);
         GroupedOpenApi api = config.api();
         OperationCustomizer customizer = api.getOperationCustomizers().iterator().next();
         Operation operation = new Operation();
@@ -202,8 +210,8 @@ class ConfigBeansTest {
     @Test
     void shouldCustomizerAddRateLimitAndPayloadResponsesForRegisterEndpoint() throws Exception {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API", "Moroccan mortgage simulator", "1.0.0",
-            "com.credit.bladi", "dev", "dev@credit-bladi.ma", null);
+            LABEL_CREDIT_BLADI_API, LABEL_MOROCCAN_MORTGAGE_SIMULATOR, "1.0.0",
+            "com.credit.bladi", "dev", EMAIL_DEV_AT_CREDIT_BLADI_MA, null);
         GroupedOpenApi api = config.api();
         OperationCustomizer customizer = api.getOperationCustomizers().iterator().next();
         Operation operation = new Operation();
@@ -222,16 +230,16 @@ class ConfigBeansTest {
         Operation result = customizer.customize(operation, handlerMethod);
 
         assertNotNull(result);
-        assertNotNull(result.getResponses().get("429"));
-        assertNotNull(result.getResponses().get("413"));
-        assertNotNull(result.getResponses().get("406"));
+        assertNotNull(result.getResponses().get(TEXT_429));
+        assertNotNull(result.getResponses().get(TEXT_413));
+        assertNotNull(result.getResponses().get(TEXT_406));
     }
 
     @Test
     void shouldCustomizerAddPayloadResponseForPatchMappingEndpoint() throws Exception {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API", "Moroccan mortgage simulator", "1.0.0",
-            "com.credit.bladi", "dev", "dev@credit-bladi.ma", null);
+            LABEL_CREDIT_BLADI_API, LABEL_MOROCCAN_MORTGAGE_SIMULATOR, "1.0.0",
+            "com.credit.bladi", "dev", EMAIL_DEV_AT_CREDIT_BLADI_MA, null);
         GroupedOpenApi api = config.api();
         OperationCustomizer customizer = api.getOperationCustomizers().iterator().next();
         Operation operation = new Operation();
@@ -240,33 +248,34 @@ class ConfigBeansTest {
         HandlerMethod handlerMethod = mock(HandlerMethod.class);
         when(handlerMethod.getBeanType()).thenReturn((Class) MourabahaParametersController.class);
         when(handlerMethod.getMethod()).thenReturn(MourabahaParametersController.class.getMethod("patchParameters",
-            Long.class, com.credit.bladi.controller.dto.mourabaha.request.PatchMourabahaParametersDTO.class));
+            java.util.UUID.class, com.credit.bladi.controller.dto.mourabaha.request.PatchMourabahaParametersDTO.class));
         when(handlerMethod.getMethodAnnotation(org.springframework.web.bind.annotation.PatchMapping.class))
             .thenReturn(MourabahaParametersController.class.getMethod("patchParameters",
-                Long.class, com.credit.bladi.controller.dto.mourabaha.request.PatchMourabahaParametersDTO.class)
+                java.util.UUID.class,
+                com.credit.bladi.controller.dto.mourabaha.request.PatchMourabahaParametersDTO.class)
                 .getAnnotation(org.springframework.web.bind.annotation.PatchMapping.class));
 
         Operation result = customizer.customize(operation, handlerMethod);
 
-        assertNotNull(result.getResponses().get("413"));
+        assertNotNull(result.getResponses().get(TEXT_413));
     }
 
     @Test
     void shouldCustomizerNotOverwriteExistingResponseCode() throws Exception {
         SwaggerConfig config = new SwaggerConfig(
-            "Credit Bladi API", "Moroccan mortgage simulator", "1.0.0",
-            "com.credit.bladi", "dev", "dev@credit-bladi.ma", null);
+            LABEL_CREDIT_BLADI_API, LABEL_MOROCCAN_MORTGAGE_SIMULATOR, "1.0.0",
+            "com.credit.bladi", "dev", EMAIL_DEV_AT_CREDIT_BLADI_MA, null);
         GroupedOpenApi api = config.api();
         OperationCustomizer customizer = api.getOperationCustomizers().iterator().next();
         Operation operation = new Operation();
         ApiResponses responses = new ApiResponses();
-        responses.addApiResponse("406", new io.swagger.v3.oas.models.responses.ApiResponse()
+        responses.addApiResponse(TEXT_406, new io.swagger.v3.oas.models.responses.ApiResponse()
             .description("custom pre-existing description"));
         operation.setResponses(responses);
 
         Operation result = customizer.customize(operation, mockHandlerMethod());
 
-        assertEquals("custom pre-existing description", result.getResponses().get("406").getDescription());
+        assertEquals("custom pre-existing description", result.getResponses().get(TEXT_406).getDescription());
     }
 
     private HandlerMethod mockHandlerMethod() throws NoSuchMethodException {

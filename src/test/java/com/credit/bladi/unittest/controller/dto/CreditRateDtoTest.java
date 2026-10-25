@@ -1,39 +1,43 @@
 package com.credit.bladi.unittest.controller.dto;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_3_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_4_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.DECIMAL_5_50;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_3_50;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_AVERAGE;
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_SALA;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_OTHER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.credit.bladi.controller.dto.creditrate.request.PatchCreditRateDTO;
 import com.credit.bladi.controller.dto.creditrate.response.CreditRateResponseDTO;
-import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class CreditRateDtoTest {
+    private static final UUID ID_1 = UUID.randomUUID();
+
+    private static final UUID ID_2 = UUID.randomUUID();
 
     @Test
     void shouldSetAndGetPatchRequestFields() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        dto.setRateMin(new BigDecimal("3.50"));
-        dto.setRateMax(new BigDecimal("5.50"));
-        dto.setMinDurationMonths(12);
-        dto.setMaxDurationMonths(300);
-        dto.setActive(true);
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(
+            DECIMAL_3_50, DECIMAL_5_50, 12, 300, CODE_AVERAGE, true);
 
-        assertEquals(new BigDecimal("3.50"), dto.getRateMin());
-        assertEquals(new BigDecimal("5.50"), dto.getRateMax());
-        assertEquals(12, dto.getMinDurationMonths());
-        assertEquals(300, dto.getMaxDurationMonths());
-        assertTrue(dto.getActive());
+        assertEquals(DECIMAL_3_50, dto.rateMin());
+        assertEquals(DECIMAL_5_50, dto.rateMax());
+        assertEquals(12, dto.minDurationMonths());
+        assertEquals(300, dto.maxDurationMonths());
+        assertEquals(CODE_AVERAGE, dto.rateFormula());
+        assertTrue(dto.active());
     }
 
     @Test
     void shouldPatchRequestEqualsAndHashCode() {
-        PatchCreditRateDTO d1 = new PatchCreditRateDTO();
-        d1.setRateMin(new BigDecimal("3.50"));
-
-        PatchCreditRateDTO d2 = new PatchCreditRateDTO();
-        d2.setRateMin(new BigDecimal("3.50"));
+        PatchCreditRateDTO d1 = new PatchCreditRateDTO(DECIMAL_3_50, null, null, null, null, null);
+        PatchCreditRateDTO d2 = new PatchCreditRateDTO(DECIMAL_3_50, null, null, null, null, null);
 
         assertEquals(d1, d2);
         assertEquals(d1.hashCode(), d2.hashCode());
@@ -41,58 +45,45 @@ class CreditRateDtoTest {
 
     @Test
     void shouldPatchRequestNotEqualToDifferentType() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        assertFalse(dto.equals("other"));
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(null, null, null, null, null, null);
+        assertFalse(dto.equals(USER_OTHER));
     }
 
     @Test
     void shouldPatchRequestNotEqualWhenDifferentFields() {
-        PatchCreditRateDTO d1 = new PatchCreditRateDTO();
-        d1.setRateMin(new BigDecimal("3.50"));
-
-        PatchCreditRateDTO d2 = new PatchCreditRateDTO();
-        d2.setRateMin(new BigDecimal("4.50"));
+        PatchCreditRateDTO d1 = new PatchCreditRateDTO(DECIMAL_3_50, null, null, null, null, null);
+        PatchCreditRateDTO d2 = new PatchCreditRateDTO(DECIMAL_4_50, null, null, null, null, null);
 
         assertFalse(d1.equals(d2));
     }
 
     @Test
     void shouldPatchRequestToString() {
-        PatchCreditRateDTO dto = new PatchCreditRateDTO();
-        dto.setRateMin(new BigDecimal("3.50"));
-        dto.setActive(true);
+        PatchCreditRateDTO dto = new PatchCreditRateDTO(DECIMAL_3_50, null, null, null, null, true);
         String str = dto.toString();
-        assertTrue(str.contains("3.50"));
+        assertTrue(str.contains(TEXT_3_50));
         assertTrue(str.contains("true"));
     }
 
     @Test
     void shouldSetAndGetResponseFields() {
-        CreditRateResponseDTO dto = new CreditRateResponseDTO();
-        dto.setId(1L);
-        dto.setCspCode("SALA");
-        dto.setRateMin(new BigDecimal("3.50"));
-        dto.setRateMax(new BigDecimal("5.50"));
-        dto.setMinDurationMonths(12);
-        dto.setMaxDurationMonths(300);
-        dto.setActive(true);
+        CreditRateResponseDTO dto = new CreditRateResponseDTO(
+            ID_1, CODE_SALA, DECIMAL_3_50, DECIMAL_5_50, CODE_AVERAGE, 12, 300, true);
 
-        assertEquals(1L, dto.getId());
-        assertEquals("SALA", dto.getCspCode());
-        assertEquals(new BigDecimal("3.50"), dto.getRateMin());
-        assertEquals(new BigDecimal("5.50"), dto.getRateMax());
-        assertEquals(12, dto.getMinDurationMonths());
-        assertEquals(300, dto.getMaxDurationMonths());
-        assertTrue(dto.getActive());
+        assertEquals(ID_1, dto.id());
+        assertEquals(CODE_SALA, dto.cspCode());
+        assertEquals(DECIMAL_3_50, dto.rateMin());
+        assertEquals(DECIMAL_5_50, dto.rateMax());
+        assertEquals(CODE_AVERAGE, dto.rateFormula());
+        assertEquals(12, dto.minDurationMonths());
+        assertEquals(300, dto.maxDurationMonths());
+        assertTrue(dto.active());
     }
 
     @Test
     void shouldResponseEqualsAndHashCode() {
-        CreditRateResponseDTO d1 = new CreditRateResponseDTO();
-        d1.setId(1L);
-
-        CreditRateResponseDTO d2 = new CreditRateResponseDTO();
-        d2.setId(1L);
+        CreditRateResponseDTO d1 = new CreditRateResponseDTO(ID_1, null, null, null, null, null, null, null);
+        CreditRateResponseDTO d2 = new CreditRateResponseDTO(ID_1, null, null, null, null, null, null, null);
 
         assertEquals(d1, d2);
         assertEquals(d1.hashCode(), d2.hashCode());
@@ -100,28 +91,23 @@ class CreditRateDtoTest {
 
     @Test
     void shouldResponseNotEqualToDifferentType() {
-        CreditRateResponseDTO dto = new CreditRateResponseDTO();
-        assertFalse(dto.equals("other"));
+        CreditRateResponseDTO dto = new CreditRateResponseDTO(null, null, null, null, null, null, null, null);
+        assertFalse(dto.equals(USER_OTHER));
     }
 
     @Test
     void shouldResponseNotEqualWhenDifferentFields() {
-        CreditRateResponseDTO d1 = new CreditRateResponseDTO();
-        d1.setId(1L);
-
-        CreditRateResponseDTO d2 = new CreditRateResponseDTO();
-        d2.setId(2L);
+        CreditRateResponseDTO d1 = new CreditRateResponseDTO(ID_1, null, null, null, null, null, null, null);
+        CreditRateResponseDTO d2 = new CreditRateResponseDTO(ID_2, null, null, null, null, null, null, null);
 
         assertFalse(d1.equals(d2));
     }
 
     @Test
     void shouldResponseToString() {
-        CreditRateResponseDTO dto = new CreditRateResponseDTO();
-        dto.setId(1L);
-        dto.setCspCode("SALA");
+        CreditRateResponseDTO dto = new CreditRateResponseDTO(ID_1, CODE_SALA, null, null, null, null, null, null);
         String str = dto.toString();
-        assertTrue(str.contains("1"));
-        assertTrue(str.contains("SALA"));
+        assertTrue(str.contains(ID_1.toString()));
+        assertTrue(str.contains(CODE_SALA));
     }
 }

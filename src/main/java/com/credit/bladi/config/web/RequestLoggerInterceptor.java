@@ -9,7 +9,6 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 public class RequestLoggerInterceptor implements HandlerInterceptor {
-
     private static final Logger LOGGER = LogManager.getLogger(RequestLoggerInterceptor.class);
     private static final String START_TIME_ATTR = "requestStartNanos";
 

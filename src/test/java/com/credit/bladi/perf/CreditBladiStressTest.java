@@ -9,12 +9,12 @@ import com.credit.bladi.perf.scenarios.audit.AuditLogScenario;
 import com.credit.bladi.perf.scenarios.auth.AuthSessionScenario;
 import com.credit.bladi.perf.scenarios.auth.LoginScenario;
 import com.credit.bladi.perf.scenarios.auth.RegisterScenario;
-import com.credit.bladi.perf.scenarios.simulation.csp.FoncSimulationScenario;
-import com.credit.bladi.perf.scenarios.simulation.csp.IndeSimulationScenario;
-import com.credit.bladi.perf.scenarios.simulation.csp.MreSimulationScenario;
-import com.credit.bladi.perf.scenarios.simulation.csp.ProfSimulationScenario;
-import com.credit.bladi.perf.scenarios.simulation.csp.RetrSimulationScenario;
-import com.credit.bladi.perf.scenarios.simulation.csp.SalaSimulationScenario;
+import com.credit.bladi.perf.scenarios.mortgage.csp.FoncMortgageCreditScenario;
+import com.credit.bladi.perf.scenarios.mortgage.csp.IndeMortgageCreditScenario;
+import com.credit.bladi.perf.scenarios.mortgage.csp.MreMortgageCreditScenario;
+import com.credit.bladi.perf.scenarios.mortgage.csp.ProfMortgageCreditScenario;
+import com.credit.bladi.perf.scenarios.mortgage.csp.RetrMortgageCreditScenario;
+import com.credit.bladi.perf.scenarios.mortgage.csp.SalaMortgageCreditScenario;
 import com.credit.bladi.perf.scenarios.user.UserReadScenario;
 import com.credit.bladi.perf.utils.BamParametersUtils;
 import com.credit.bladi.perf.utils.CreditRateUtils;
@@ -25,19 +25,18 @@ import io.gatling.javaapi.http.HttpProtocolBuilder;
 import java.time.ZonedDateTime;
 
 public class CreditBladiStressTest extends Simulation {
-
     private final HttpProtocolBuilder httpProtocol = http
         .baseUrl(BASE_URL)
         .acceptHeader("application/json")
         .contentTypeHeader("application/json")
         .header("X-Forwarded-For", "#{clientIp}");
 
-    private final SalaSimulationScenario sala = new SalaSimulationScenario();
-    private final FoncSimulationScenario fonc = new FoncSimulationScenario();
-    private final RetrSimulationScenario retr = new RetrSimulationScenario();
-    private final ProfSimulationScenario prof = new ProfSimulationScenario();
-    private final IndeSimulationScenario inde = new IndeSimulationScenario();
-    private final MreSimulationScenario mre = new MreSimulationScenario();
+    private final SalaMortgageCreditScenario sala = new SalaMortgageCreditScenario();
+    private final FoncMortgageCreditScenario fonc = new FoncMortgageCreditScenario();
+    private final RetrMortgageCreditScenario retr = new RetrMortgageCreditScenario();
+    private final ProfMortgageCreditScenario prof = new ProfMortgageCreditScenario();
+    private final IndeMortgageCreditScenario inde = new IndeMortgageCreditScenario();
+    private final MreMortgageCreditScenario mre = new MreMortgageCreditScenario();
 
     private final LoginScenario login = new LoginScenario();
     private final RegisterScenario register = new RegisterScenario();
@@ -101,7 +100,7 @@ public class CreditBladiStressTest extends Simulation {
     @Override
     public void before() {
         System.out.println("╔══════════════════════════════════════════════╗");
-        System.out.println("║      Credit Bladi — Stress Test Start        ║");
+        System.out.println("║      Credit Bladi: Stress Test Start        ║");
         System.out.println("╚══════════════════════════════════════════════╝");
         System.out.println("Target : " + BASE_URL);
         System.out.println("Start  : " + ZonedDateTime.now());
@@ -125,7 +124,7 @@ public class CreditBladiStressTest extends Simulation {
     @Override
     public void after() {
         System.out.println("╔══════════════════════════════════════════════╗");
-        System.out.println("║      Credit Bladi — Stress Test Done         ║");
+        System.out.println("║      Credit Bladi: Stress Test Done         ║");
         System.out.println("╚══════════════════════════════════════════════╝");
         System.out.println("End     : " + ZonedDateTime.now());
         System.out.println("Reports : target/gatling/");

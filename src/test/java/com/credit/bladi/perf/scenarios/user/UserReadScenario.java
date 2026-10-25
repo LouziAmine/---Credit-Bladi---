@@ -15,7 +15,6 @@ import io.gatling.javaapi.core.ScenarioBuilder;
 import java.time.Duration;
 
 public class UserReadScenario {
-
     private static final Duration RAMP_UP = Duration.ofSeconds(10);
     private static final Duration LOAD_TIME = Duration.ofMinutes(2);
 

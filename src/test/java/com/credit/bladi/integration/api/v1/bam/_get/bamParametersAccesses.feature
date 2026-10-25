@@ -1,4 +1,4 @@
-Feature: GET /api/v1/bam-parameters — access restrictions
+Feature: GET /api/v1/bam-parameters: access restrictions
 
   Background:
     * url baseUrl

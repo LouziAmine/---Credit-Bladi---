@@ -1,0 +1,95 @@
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: credit-bladi-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP: point SMTP_HOST/SMTP_PORT here for local dev
+      - "8025:8025" # Web UI: open http://localhost:8025 to read sent emails
+    environment:
+      MP_SMTP_DISABLE_RDNS: "true" # no reverse-DNS lookup per SMTP connection (it delays the greeting by seconds)
+
+  clamav:
+    image: clamav/clamav:stable
+    container_name: credit-bladi-clamav
+    restart: unless-stopped
+    ports:
+      - "3310:3310" # clamd INSTREAM protocol: see ClamAvAntivirusScanner
+    volumes:
+      - credit-bladi-clamav-data:/var/lib/clamav
+    healthcheck:
+      # clamd takes a few minutes on first boot to download the virus definitions (freshclam);
+      # this only turns healthy once clamdcheck.sh confirms the daemon actually answers PING.
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 5m
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: credit-bladi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bladidb
+      POSTGRES_USER: bladi
+      POSTGRES_PASSWORD: bladi
+    ports:
+      - "5432:5432"
+    volumes:
+      - credit-bladi-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bladi -d bladidb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Full stack in containers (any OS): `docker compose --profile app up -d --build`.
+  # Without the profile, `docker compose up -d` only starts the infrastructure above, for running the
+  # backend with ./mvnw and the frontend with npm start directly on the machine.
+  backend:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: credit-bladi-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bladidb
+      APP_DOCUMENTSTORAGE_ANTIVIRUS_HOST: clamav
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    volumes:
+      - credit-bladi-documents-data:/app/data/documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+      mailpit:
+        condition: service_started
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ../---Bladi-Credit-Portal---
+      dockerfile: Dockerfile
+    container_name: credit-bladi-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:8080"
+    environment:
+      API_UPSTREAM: http://backend:8080
+    depends_on:
+      - backend
+
+volumes:
+  credit-bladi-postgres-data:
+  credit-bladi-clamav-data:
+  credit-bladi-documents-data:

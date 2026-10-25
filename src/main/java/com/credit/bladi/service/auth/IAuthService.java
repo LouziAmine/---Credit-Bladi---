@@ -4,8 +4,7 @@ import com.credit.bladi.model.auth.AuthLoginResult;
 import com.credit.bladi.model.user.User;
 
 public interface IAuthService {
-
-    AuthLoginResult login(User credentials);
+    AuthLoginResult login(User credentials, String clientIp);
 
     void register(User user);
 

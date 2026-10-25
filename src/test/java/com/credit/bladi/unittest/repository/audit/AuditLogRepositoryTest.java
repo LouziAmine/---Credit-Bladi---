@@ -1,5 +1,7 @@
 package com.credit.bladi.unittest.repository.audit;
 
+import static com.credit.bladi.unittest.mock.data.MockCodes.CODE_LOGIN;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_JDOE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -24,7 +26,6 @@ import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class AuditLogRepositoryTest {
-
     @Mock
     private AuditLogDatasource datasource;
 
@@ -38,7 +39,7 @@ class AuditLogRepositoryTest {
     @Test
     void shouldSaveMappedEntity() {
         AuditLogModel model = AuditLogModel.getBuilder()
-            .username("jdoe")
+            .username(USER_JDOE)
             .action(AuditAction.LOGIN)
             .performedAt(LocalDateTime.now())
             .build();
@@ -51,8 +52,8 @@ class AuditLogRepositoryTest {
     @Test
     void shouldReturnPageOfAuditLogEntries() {
         AuditLogEntity entity = new AuditLogEntity();
-        entity.setUsername("jdoe");
-        entity.setAction("LOGIN");
+        entity.setUsername(USER_JDOE);
+        entity.setAction(CODE_LOGIN);
         entity.setPerformedAt(LocalDateTime.now());
         Page<AuditLogEntity> page = new PageImpl<>(List.of(entity));
         when(datasource.findAll(any(PageRequest.class))).thenReturn(page);
@@ -60,6 +61,6 @@ class AuditLogRepositoryTest {
         CreditPage<AuditLogModel> result = repository.findAll(1, 20);
 
         assertEquals(1, result.getItems().size());
-        assertEquals("jdoe", result.getItems().get(0).getUsername());
+        assertEquals(USER_JDOE, result.getItems().get(0).getUsername());
     }
 }

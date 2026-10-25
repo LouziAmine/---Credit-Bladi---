@@ -1,5 +1,8 @@
 package com.credit.bladi.unittest.datasource.auth.entity;
 
+import static com.credit.bladi.unittest.mock.data.MockAmounts.TEXT_123456789;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_HASH123;
+import static com.credit.bladi.unittest.mock.data.MockTokens.TOKEN_REVOKEDHASH;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -10,7 +13,6 @@ import com.credit.bladi.datasource.auth.entity.RevokedTokenEntity;
 import org.junit.jupiter.api.Test;
 
 class RevokedTokenEntityTest {
-
     @Test
     void shouldCreateWithDefaultConstructor() {
         RevokedTokenEntity entity = new RevokedTokenEntity();
@@ -21,8 +23,8 @@ class RevokedTokenEntityTest {
 
     @Test
     void shouldCreateWithAllArgsConstructor() {
-        RevokedTokenEntity entity = new RevokedTokenEntity("hash123", 9999999L);
-        assertEquals("hash123", entity.getTokenHash());
+        RevokedTokenEntity entity = new RevokedTokenEntity(TOKEN_HASH123, 9999999L);
+        assertEquals(TOKEN_HASH123, entity.getTokenHash());
         assertEquals(9999999L, entity.getExpiresAt());
     }
 
@@ -36,8 +38,8 @@ class RevokedTokenEntityTest {
     @Test
     void shouldSetAndGetToken() {
         RevokedTokenEntity entity = new RevokedTokenEntity();
-        entity.setTokenHash("revokedhash");
-        assertEquals("revokedhash", entity.getTokenHash());
+        entity.setTokenHash(TOKEN_REVOKEDHASH);
+        assertEquals(TOKEN_REVOKEDHASH, entity.getTokenHash());
     }
 
     @Test
@@ -99,6 +101,6 @@ class RevokedTokenEntityTest {
         entity.setExpiresAt(123456789L);
         String str = entity.toString();
         assertTrue(str.contains("1"));
-        assertTrue(str.contains("123456789"));
+        assertTrue(str.contains(TEXT_123456789));
     }
 }

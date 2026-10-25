@@ -1,0 +1,11 @@
+package com.credit.bladi.model.enums;
+
+public enum BamScenario {
+    CLEAR,
+    MINOR_INCIDENT,
+    ACTIVE_INCIDENT,
+    PERSONAL_EXPOSURE_DETECTED,
+    MULTIPLE_EXPOSURES,
+    CONSOLIDATED_GROUP_EXPOSURE,
+    REQUIRES_MANUAL_REVIEW
+}

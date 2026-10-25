@@ -5,6 +5,7 @@ import static com.credit.bladi.unittest.mock.bam.MockBamParameters.PAGE;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.SIZE;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.bamParametersEntity;
 import static com.credit.bladi.unittest.mock.bam.MockBamParameters.bamParametersModel;
+import static com.credit.bladi.unittest.mock.data.MockAmounts.AMOUNT_7000;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,7 +22,6 @@ import com.credit.bladi.exception.BamParametersException;
 import com.credit.bladi.model.bam.BamParametersModel;
 import com.credit.bladi.model.vo.Money;
 import com.credit.bladi.repository.bam.BamParametersRepository;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +34,6 @@ import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class BamParametersRepositoryTest {
-
     @Mock
     private BamParametersDatasource datasource;
 
@@ -142,7 +141,7 @@ class BamParametersRepositoryTest {
         when(datasource.findById(BAM_ID)).thenReturn(Optional.of(bamParametersEntity()));
         BamParametersModel patch = BamParametersModel.getBuilder()
             .id(BAM_ID)
-            .minProcessingFees(Money.of(new BigDecimal("7000")))
+            .minProcessingFees(Money.of(AMOUNT_7000))
             .build();
 
         BamParametersException exception = assertThrows(BamParametersException.class,

@@ -1,6 +1,12 @@
 package com.credit.bladi.unittest.exception.handler;
 
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CB_400;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CB_401;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_CB_403;
+import static com.credit.bladi.unittest.mock.data.MockLabels.LABEL_UTF_8;
+import static com.credit.bladi.unittest.mock.data.MockUsers.USER_UNKNOWN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -16,23 +22,28 @@ import com.credit.bladi.exception.BamParametersException.BamParametersExceptionT
 import com.credit.bladi.exception.CreditRateException;
 import com.credit.bladi.exception.CreditRateException.CreditRateExceptionType;
 import com.credit.bladi.exception.ErrorResponse;
+import com.credit.bladi.exception.MortgageCreditException;
+import com.credit.bladi.exception.MortgageCreditException.MortgageCreditExceptionType;
 import com.credit.bladi.exception.MourabahaParametersException;
 import com.credit.bladi.exception.MourabahaParametersException.MourabahaParametersExceptionType;
-import com.credit.bladi.exception.SimulationException;
-import com.credit.bladi.exception.SimulationException.SimulationExceptionType;
 import com.credit.bladi.exception.ValidationException;
 import com.credit.bladi.exception.ValidationException.ValidationExceptionType;
 import com.credit.bladi.exception.handler.ApiExceptionHandler;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -54,7 +65,6 @@ import tools.jackson.databind.exc.UnrecognizedPropertyException;
 
 @ExtendWith(MockitoExtension.class)
 class ApiExceptionHandlerTest {
-
     @Mock
     private RequestContext requestContext;
 
@@ -62,8 +72,28 @@ class ApiExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new ApiExceptionHandler(requestContext);
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasenames(
+            "i18n/common/identity", "i18n/common/error", "i18n/common/security", "i18n/common/path-params",
+            "i18n/exception/auth", "i18n/exception/bam", "i18n/exception/activity-sector",
+            "i18n/exception/bam-parameters", "i18n/exception/credit-rate", "i18n/exception/investment-credit",
+            "i18n/exception/enterprise", "i18n/exception/mourabaha-parameters", "i18n/exception/mortgage-credit",
+            "i18n/exception/validation", "i18n/exception/workflow", "i18n/validator/iso-country-code",
+            "i18n/controller/enterprise", "i18n/dto/login-request", "i18n/dto/create-activity-sector-request",
+            "i18n/dto/create-enterprise-request", "i18n/dto/add-demand-comment-request",
+            "i18n/dto/classify-demand-request", "i18n/dto/advance-demand-request", "i18n/dto/patch-bam-parameters",
+            "i18n/dto/patch-mourabaha-parameters", "i18n/dto/patch-credit-rate",
+            "i18n/dto/patch-investment-credit-parameters", "i18n/dto/investment-credit-request",
+            "i18n/dto/mortgage-credit-request");
+        messageSource.setDefaultEncoding(LABEL_UTF_8);
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+        handler = new ApiExceptionHandler(requestContext, messageSource, Clock.systemUTC());
         when(requestContext.getRequestId()).thenReturn("test-req-id");
+    }
+
+    @AfterEach
+    void tearDown() {
+        LocaleContextHolder.resetLocaleContext();
     }
 
     @SuppressWarnings("unchecked")
@@ -87,7 +117,7 @@ class ApiExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals("CB-400", result.getBody().errorCode());
+        assertEquals(LABEL_CB_400, result.getBody().errorCode());
     }
 
     @Test
@@ -166,7 +196,7 @@ class ApiExceptionHandlerTest {
 
         assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals("CB-403", result.getBody().errorCode());
+        assertEquals(LABEL_CB_403, result.getBody().errorCode());
     }
 
     @Test
@@ -222,18 +252,18 @@ class ApiExceptionHandlerTest {
     void shouldHandleAuthException() {
         AuthException ex = AuthException.of(AuthExceptionType.INVALID_CREDENTIALS);
 
-        ResponseEntity<ErrorResponse> result = handler.handleAuthException(ex);
+        ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
         assertEquals(HttpStatus.UNAUTHORIZED, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals("CB-401", result.getBody().errorCode());
+        assertEquals(LABEL_CB_401, result.getBody().errorCode());
     }
 
     @Test
     void shouldHandleBAMException() {
         BAMException ex = BAMException.of(BAMExceptionType.DURATION_LIMIT_EXCEEDED);
 
-        ResponseEntity<ErrorResponse> result = handler.handleBAMException(ex);
+        ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
         assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -241,9 +271,9 @@ class ApiExceptionHandlerTest {
 
     @Test
     void shouldHandleSimulationException() {
-        SimulationException ex = SimulationException.of(SimulationExceptionType.CSP_NOT_FOUND);
+        MortgageCreditException ex = MortgageCreditException.of(MortgageCreditExceptionType.CSP_NOT_FOUND);
 
-        ResponseEntity<ErrorResponse> result = handler.handleSimulationException(ex);
+        ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
         assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -253,7 +283,7 @@ class ApiExceptionHandlerTest {
     void shouldHandleBamParametersException() {
         BamParametersException ex = BamParametersException.of(BamParametersExceptionType.NOT_FOUND);
 
-        ResponseEntity<ErrorResponse> result = handler.handleBamParametersException(ex);
+        ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
         assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -263,7 +293,7 @@ class ApiExceptionHandlerTest {
     void shouldHandleCreditRateException() {
         CreditRateException ex = CreditRateException.of(CreditRateExceptionType.NOT_FOUND);
 
-        ResponseEntity<ErrorResponse> result = handler.handleCreditRateException(ex);
+        ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
         assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -274,7 +304,7 @@ class ApiExceptionHandlerTest {
         MourabahaParametersException ex =
             MourabahaParametersException.of(MourabahaParametersExceptionType.NOT_FOUND);
 
-        ResponseEntity<ErrorResponse> result = handler.handleMourabahaParametersException(ex);
+        ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
         assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -321,7 +351,7 @@ class ApiExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals("bad input", result.getBody().description());
+        assertNotEquals("bad input", result.getBody().description(), "internal exception text must not leak");
     }
 
     @Test
@@ -390,7 +420,7 @@ class ApiExceptionHandlerTest {
             "handleMismatchedInputException", MismatchedInputException.class, ex);
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
-        assertTrue(result.getBody().description().contains("unknown"));
+        assertTrue(result.getBody().description().contains(USER_UNKNOWN));
     }
 
     @Test
@@ -439,7 +469,7 @@ class ApiExceptionHandlerTest {
 
     @Test
     void shouldHandleValidationException() {
-        ValidationException ex = ValidationException.of(ValidationExceptionType.INVALID_PAGE);
+        ValidationException ex = ValidationException.of(ValidationExceptionType.INVALID_VALUE, "page");
 
         ResponseEntity<ErrorResponse> result = handler.handleValidationException(ex);
 
@@ -515,20 +545,20 @@ class ApiExceptionHandlerTest {
 
     @Test
     void shouldHandleApiException() {
-        com.credit.bladi.exception.ApiException ex =
-            new com.credit.bladi.exception.ApiException(com.credit.bladi.exception.ApiStatus.GATEWAY_TIMEOUT);
+        com.credit.bladi.exception.ApiException ex = new com.credit.bladi.exception.ApiException(
+            com.credit.bladi.exception.ApiStatus.SERVICE_UNAVAILABLE, "error.status.default");
 
         ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
-        assertEquals(HttpStatus.GATEWAY_TIMEOUT, result.getStatusCode());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, result.getStatusCode());
         assertNotNull(result.getBody());
     }
 
     @Test
     void shouldHandleApiExceptionWith404StatusCode() {
         when(requestContext.getRequestId()).thenReturn(null);
-        com.credit.bladi.exception.ApiException ex =
-            new com.credit.bladi.exception.ApiException(com.credit.bladi.exception.ApiStatus.NOT_FOUND);
+        com.credit.bladi.exception.ApiException ex = new com.credit.bladi.exception.ApiException(
+            com.credit.bladi.exception.ApiStatus.NOT_FOUND, "error.status.default");
 
         ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
@@ -538,8 +568,8 @@ class ApiExceptionHandlerTest {
 
     @Test
     void shouldHandleApiExceptionWith401StatusCode() {
-        com.credit.bladi.exception.ApiException ex =
-            new com.credit.bladi.exception.ApiException(com.credit.bladi.exception.ApiStatus.UNAUTHORIZED);
+        com.credit.bladi.exception.ApiException ex = new com.credit.bladi.exception.ApiException(
+            com.credit.bladi.exception.ApiStatus.UNAUTHORIZED, "error.status.default");
 
         ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
@@ -548,8 +578,8 @@ class ApiExceptionHandlerTest {
 
     @Test
     void shouldHandleApiExceptionWith403StatusCode() {
-        com.credit.bladi.exception.ApiException ex =
-            new com.credit.bladi.exception.ApiException(com.credit.bladi.exception.ApiStatus.FORBIDDEN);
+        com.credit.bladi.exception.ApiException ex = new com.credit.bladi.exception.ApiException(
+            com.credit.bladi.exception.ApiStatus.FORBIDDEN, "error.status.default");
 
         ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
@@ -557,12 +587,12 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void shouldHandleApiExceptionWith415StatusCode() {
-        com.credit.bladi.exception.ApiException ex =
-            new com.credit.bladi.exception.ApiException(com.credit.bladi.exception.ApiStatus.UNSUPPORTED_MEDIA_TYPE);
+    void shouldHandleApiExceptionWith423StatusCode() {
+        com.credit.bladi.exception.ApiException ex = new com.credit.bladi.exception.ApiException(
+            com.credit.bladi.exception.ApiStatus.LOCKED, "error.status.default");
 
         ResponseEntity<ErrorResponse> result = handler.handleApiException(ex);
 
-        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, result.getStatusCode());
+        assertEquals(HttpStatus.LOCKED, result.getStatusCode());
     }
 }
